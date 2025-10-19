@@ -18,3 +18,15 @@ def inject_variables(dest: Path, variables: dict[str, str]):
             for key, value in variables.items():
                 text = text.replace(f"__{key}__", value)
             file.write_text(text)
+
+
+def inject_variables_in_file(file_path: Path, variables: dict[str, str]):
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    text = file_path.read_text()
+
+    for key, value in variables.items():
+        text = text.replace(f"__{key}__", value)
+
+    file_path.write_text(text)

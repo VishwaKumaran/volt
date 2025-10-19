@@ -1,5 +1,6 @@
 from typing import Literal
 
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,7 +12,14 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "__PROJECT_NAME__"
     ENVIRONMENT: Literal["local", "dev", "staging", "production"] = "local"
 
+    @computed_field
+    @property
+    def DEBUG(self) -> bool:
+        return self.ENVIRONMENT in ["local", "dev"]
+
     API_V1: str = "/api/v1"
+
+    __DB_BLOCK__
 
 
 settings = Settings()

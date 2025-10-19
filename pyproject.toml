@@ -9,11 +9,17 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "questionary>=2.1.1",
+    "typer>=0.19.2",
 ]
 
 [build-system]
 requires = ["uv_build>=0.8.12,<0.9.0"]
 build-backend = "uv_build"
+
+[tool.uv.workspace]
+members = [
+    "../../Tests/test_uv",
+]
 
 [project.scripts]
 volt = "volt.cli:main"

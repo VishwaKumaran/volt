@@ -1,25 +1,21 @@
-import argparse
+from typer import Typer
 
-from volt.core.project import create_project
+from volt.stacks.fastapi import create_fastapi_app
+
+app = Typer(help="An extremely fast template manager")
+
+fastapi_app = Typer(help="FastAPI tools")
+app.add_typer(fastapi_app, name="fastapi")
+
+
+@fastapi_app.command("create")
+def create_fastapi(name: str):
+    create_fastapi_app(name)
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="volt", description="Volt ⚡ - Multi-stack project generator")
+    app()
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    parser_fastapi = subparsers.add_parser(
-        "create-fastapi-app",
-        help="Create a minimal FastAPI project"
-    )
-    parser_fastapi.add_argument("name", help="Name of the project to create")
-    parser_fastapi.add_argument(
-        "--skip-install",
-        action="store_true",
-        help="Skip dependency installation"
-    )
-
-    args = parser.parse_args()
-
-    if args.command == "create-fastapi-app":
-        create_project(args.name, "fastapi", skip_install=args.skip_install)
+if __name__ == "__main__":
+    main()
