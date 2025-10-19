@@ -18,7 +18,6 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT in ["local", "dev"]
 
     API_V1: str = "/api/v1"
-
     __DB_BLOCK__
 
 

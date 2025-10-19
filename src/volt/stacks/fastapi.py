@@ -38,7 +38,7 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
 def generate_db_block(db_choice: str, project_name: str) -> str:
     if db_choice == "SQLite":
         return f'''
-    DB_PATH: str = "data/{project_name}.db"
+    DB_PATH: str
 
     @computed_field
     @property
@@ -72,4 +72,4 @@ def generate_db_block(db_choice: str, project_name: str) -> str:
         return f"mysql+aiomysql://{{self.DB_USER}}:{{self.DB_PASSWORD}}@{{self.DB_HOST}}:{{self.DB_PORT}}/{{self.DB_NAME}}"
     '''
     else:
-        return "# No database configured"
+        return "\n# No database configured"
