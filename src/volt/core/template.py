@@ -30,3 +30,24 @@ def inject_variables_in_file(file_path: Path, variables: dict[str, str]):
         text = text.replace(f"__{key}__", value)
 
     file_path.write_text(text)
+
+
+def add_env_variables(env_file: Path, variables: dict[str, str | None]) -> None:
+    if not env_file.exists():
+        env_file.touch()
+
+    lines = env_file.read_text().splitlines()
+    env_dict = {}
+
+    for line in lines:
+        if not line.strip() or line.strip().startswith("#"):
+            continue
+        if "=" in line:
+            key, value = line.split("=", 1)
+            env_dict[key.strip()] = value.strip()
+
+    env_dict.update(variables)
+
+    with env_file.open("w") as f:
+        for key, value in env_dict.items():
+            f.write(f"{key}={value}\n" if value else f"{key}=\n")
