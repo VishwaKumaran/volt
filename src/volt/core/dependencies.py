@@ -11,12 +11,14 @@ FASTAPI_DEPS = {
     "sqlite": ["sqlmodel", "aiosqlite"],
     "postgresql": ["sqlmodel", "asyncpg"],
     "mysql": ["sqlmodel", "aiomysql"],
+    "mongodb": ["motor"],
 }
 
 
 def install_fastapi_dependencies(dest: Path, db_choice: str):
     print(f"Installing dependencies for FastAPI project...")
     subprocess.run(["uv", "init"], cwd=dest, check=True)
+    subprocess.run(["rm", "main.py"], cwd=dest, check=True)
     subprocess.run(["uv", "add", *STACK_DEPS["fastapi"]], cwd=dest)
 
     if db_choice != "None":
