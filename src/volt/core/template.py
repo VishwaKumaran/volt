@@ -1,4 +1,5 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 TEMPLATES_ROOT = Path(__file__).parent.parent / "templates"
@@ -51,3 +52,7 @@ def add_env_variables(env_file: Path, variables: dict[str, str | None]) -> None:
     with env_file.open("w") as f:
         for key, value in env_dict.items():
             f.write(f"{key}={value}\n" if value else f"{key}=\n")
+
+
+def format_with_black(dest: Path):
+    subprocess.run(["uv", "run", "black", dest], check=False)
