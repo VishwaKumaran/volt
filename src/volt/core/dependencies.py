@@ -11,7 +11,7 @@ FASTAPI_DEPS = {
     "sqlite": ["sqlmodel", "aiosqlite"],
     "postgresql": ["sqlmodel", "asyncpg"],
     "mysql": ["sqlmodel", "aiomysql"],
-    "mongodb": ["motor"],
+    "mongodb": ["beanie"],
 }
 
 
