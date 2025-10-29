@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     API_V1: str = "/api/v1"
     __DB_BLOCK__
+    __AUTH_BLOCK__
 
 
 settings = Settings()

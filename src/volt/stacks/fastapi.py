@@ -3,7 +3,7 @@ from pathlib import Path
 from rich import print
 
 from volt.core.dependencies import install_fastapi_dependencies
-from volt.core.injectors import inject_lifespan_for_mongo
+from volt.core.injectors import inject_lifespan_for_mongo, inject_auth_routers, inject_users_model
 from volt.core.prompts import choose
 from volt.core.template import copy_template, inject_variables_in_file, add_env_variables, format_with_black
 
@@ -24,10 +24,20 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
         "Select a database:",
         choices=["None", "SQLite", "PostgreSQL", "MySQL", "MongoDB"],
     )
+    auth_choice = choose(
+        "Select an authentication method:",
+        choices=[
+            "None",
+            "Bearer Token (Authorization Header)",
+            "Cookie-based Authentication (HTTPOnly)",
+        ],
+        default="None",
+    )
 
     copy_template("fastapi", "base", dest)
     env_path = dest / ".env.example"
     db_block = generate_db_block(db_choice, env_path)
+    auth_block = generate_auth_block(auth_choice)
 
     if db_choice in DB_SQL_MODEL:
         copy_template("fastapi", "db_sqlmodel", dest, True)
@@ -35,15 +45,25 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
         copy_template("fastapi", "db_mongo", dest, True)
         inject_lifespan_for_mongo(dest / "app" / "main.py")
 
+    if auth_choice == "Bearer Token (Authorization Header)":
+        copy_template("fastapi", "auth_bearer", dest, True)
+    elif auth_choice == "Cookie-based Authentication (HTTPOnly)":
+        copy_template("fastapi", "auth_cookie", dest, True)
+
+    if auth_choice != "None":
+        inject_auth_routers(dest / "app" / "routers" / "main.py")
+        inject_users_model(dest / "app" / "models" / "user.py", db_choice)
+
     config_path = Path(dest) / "app" / "core" / "config.py"
 
     inject_variables_in_file(config_path, {
         "PROJECT_NAME": project_name,
-        "DB_BLOCK": db_block
+        "DB_BLOCK": db_block,
+        "AUTH_BLOCK": auth_block,
     })
 
     if not skip_install:
-        install_fastapi_dependencies(dest, db_choice)
+        install_fastapi_dependencies(dest, db_choice, auth_choice)
 
     format_with_black(dest)
 
@@ -126,3 +146,14 @@ def generate_db_block(db_choice: str, env_path: Path) -> str:
     '''
     else:
         return "\n# No database configured"
+
+
+def generate_auth_block(auth_choice: str) -> str:
+    if auth_choice in ["Bearer Token (Authorization Header)", "Cookie-based Authentication (HTTPOnly)"]:
+        return f'''
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+        '''
+    else:
+        return "\n# No authentication configured"
