@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from volt.stacks.fastapi import DB_SQL_MODEL
+from volt.stacks import DB_SQL_MODEL
 
 
 def inject_lifespan_for_mongo(main_file: Path):

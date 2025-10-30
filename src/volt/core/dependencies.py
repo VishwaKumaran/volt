@@ -26,4 +26,4 @@ def install_fastapi_dependencies(dest: Path, db_choice: str, auth_choice: str):
     if db_choice != "None":
         subprocess.run(["uv", "add", *FASTAPI_DEPS[db_choice.lower()]], cwd=dest, check=True)
     if auth_choice != "None":
-        subprocess.run(["uv", "add", *FASTAPI_DEPS[auth_choice.lower()]], cwd=dest, check=True)
+        subprocess.run(["uv", "add", *FASTAPI_DEPS[auth_choice]], cwd=dest, check=True)
