@@ -1,16 +1,13 @@
 from typer import Typer
 
-from volt.stacks.fastapi import create_fastapi_app
+from volt.stacks.fastapi.cli import fastapi_app
 
-app = Typer(help="An extremely fast template manager")
+app = Typer(
+    help="An extremely fast template and stack manager for Python projects.",
+    no_args_is_help=True,
+)
 
-fastapi_app = Typer(help="FastAPI tools")
-app.add_typer(fastapi_app, name="fastapi")
-
-
-@fastapi_app.command("create")
-def create_fastapi(name: str):
-    create_fastapi_app(name)
+app.add_typer(fastapi_app, name="fastapi", no_args_is_help=True)
 
 
 def main():
