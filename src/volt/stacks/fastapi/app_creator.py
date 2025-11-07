@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 from rich import print
@@ -19,32 +20,41 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
     project_name = dest.name
 
     if dest.exists():
-        print(f"[red]The folder '{name}' already exists.[/red]")
+        print(f"[red]The folder '{dest.resolve()}' already exists.[/red]")
         return
 
-    db_choice = choose(
-        "Select a database:",
-        choices=["None", "SQLite", "PostgreSQL", "MySQL", "MongoDB"],
-    )
-    auth_choice = choose(
-        "Select an authentication method:",
-        choices=[
-            "None",
-            "Bearer Token (Authorization Header)",
-            "Cookie-based Authentication (HTTPOnly)",
-        ],
-        default="None",
-    )
+    try:
+        db_choice = choose(
+            "Select a database:",
+            choices=["None", "SQLite", "PostgreSQL", "MySQL", "MongoDB"],
+            default="None",
+        )
+        auth_choice = choose(
+            "Select an authentication method:",
+            choices=[
+                "None",
+                "Bearer Token (Authorization Header)",
+                "Cookie-based Authentication (HTTPOnly)",
+            ],
+            default="None",
+        )
+    except KeyboardInterrupt:
+        return
 
-    copy_fastapi_base_template(dest)
+    try:
+        copy_fastapi_base_template(dest)
 
-    setup_db_templates(dest, db_choice)
-    setup_auth_templates(dest, auth_choice, db_choice)
+        setup_db_templates(dest, db_choice)
+        setup_auth_templates(dest, auth_choice, db_choice)
 
-    prepare_fastapi_template(dest, project_name, db_choice, auth_choice)
+        prepare_fastapi_template(dest, project_name, db_choice, auth_choice)
 
-    if not skip_install:
-        install_fastapi_dependencies(dest, db_choice, auth_choice)
+        if not skip_install:
+            install_fastapi_dependencies(dest, db_choice, auth_choice)
+    except Exception as e:
+        print(f"[red]Error creating FastAPI app: {e}[/red]")
+        if dest.exists():
+            shutil.rmtree(dest)
 
     print()
     print(f"[green]✔ Successfully created FastAPI app:[/green] [bold]{project_name}[/bold]")
