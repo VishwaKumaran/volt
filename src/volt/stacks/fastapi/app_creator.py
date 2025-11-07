@@ -7,8 +7,6 @@ from volt.stacks.fastapi.dependencies import install_fastapi_dependencies
 from volt.stacks.fastapi.helpers import (
     setup_db_templates,
     setup_auth_templates,
-    announce_creation,
-    announce_done,
 )
 from volt.stacks.fastapi.template_utils import (
     copy_fastapi_base_template,
@@ -23,8 +21,6 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
     if dest.exists():
         print(f"[red]The folder '{name}' already exists.[/red]")
         return
-
-    announce_creation(project_name)
 
     db_choice = choose(
         "Select a database:",
@@ -50,4 +46,13 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
     if not skip_install:
         install_fastapi_dependencies(dest, db_choice, auth_choice)
 
-    announce_done(project_name)
+    print()
+    print(f"[green]✔ Successfully created FastAPI app:[/green] [bold]{project_name}[/bold]")
+    print(f"[dim]Location:[/dim] [blue]{dest.resolve()}[/blue]")
+    print()
+    print("[bold]Next steps:[/bold]")
+    print(f"  1. [cyan]cd {project_name}[/cyan]")
+    if not skip_install:
+        print("  2. [cyan]uv run uvicorn app.main:app[/cyan]")
+    else:
+        print("  2. [cyan]Install dependencies manually[/cyan]")

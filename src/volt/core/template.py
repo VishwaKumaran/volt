@@ -2,8 +2,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from rich import print
-
 TEMPLATES_ROOT = Path(__file__).parent.parent / "templates"
 
 
@@ -12,7 +10,6 @@ def copy_template(stack: str, template_name: str, dest: Path, dirs_exist_ok: boo
     if not src.exists():
         raise FileNotFoundError(f"Template '{template_name}' not found for stack '{stack}'.")
     shutil.copytree(src, dest, dirs_exist_ok=dirs_exist_ok)
-    print(f"[green]✅ Copied template:[/green] {stack}/{template_name} → {dest}")
 
 
 def inject_variables(dest: Path, variables: dict[str, str]) -> None:
@@ -22,7 +19,6 @@ def inject_variables(dest: Path, variables: dict[str, str]) -> None:
             for key, value in variables.items():
                 text = text.replace(f"__{key}__", str(value))
             file.write_text(text)
-    print(f"[cyan]Injected variables into files under:[/cyan] {dest}")
 
 
 def inject_variables_in_file(file_path: Path, variables: dict[str, str]) -> None:
@@ -33,7 +29,6 @@ def inject_variables_in_file(file_path: Path, variables: dict[str, str]) -> None
     for key, value in variables.items():
         text = text.replace(f"__{key}__", str(value))
     file_path.write_text(text)
-    print(f"[cyan]Injected variables into file:[/cyan] {file_path}")
 
 
 def add_env_variables(env_file: Path, variables: dict[str, str | None]) -> None:
@@ -56,9 +51,7 @@ def add_env_variables(env_file: Path, variables: dict[str, str | None]) -> None:
         for key, value in env_dict.items():
             f.write(f"{key}={value or ''}\n")
 
-    print(f"[yellow]Updated {env_file.stem} file:[/yellow] {env_file}")
-
 
 def format_with_black(dest: Path, formatter: str = "black") -> None:
-    print(f"[dim]Formatting code with {formatter}...[/dim]")
-    subprocess.run(["uv", "run", formatter, str(dest)], check=False)
+    subprocess.run(["uv", "run", formatter, str(dest)], check=False, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, )

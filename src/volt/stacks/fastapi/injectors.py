@@ -10,7 +10,6 @@ from volt.stacks.constants import DB_SQL_MODEL
 def inject_lifespan_for_mongo(main_file: Path):
     content = main_file.read_text()
     if "lifespan=" in content:
-        print("[yellow]Lifespan already defined, skipping injection.[/yellow]")
         return
 
     pattern = r"app\s*=\s*FastAPI\s*\(([^)]*)\)"
@@ -35,7 +34,6 @@ async def lifespan(app: FastAPI):
         content,
     )
     main_file.write_text(new_content)
-    print("[green]✅ Lifespan injected successfully.[/green]")
 
 
 def register_model_in_init_beanie(db_file: Path, model_name: str):
@@ -45,7 +43,6 @@ def register_model_in_init_beanie(db_file: Path, model_name: str):
     match = re.search(pattern, content, flags=re.DOTALL)
 
     if not match:
-        print(f"[red]❌ init_beanie() not found in {db_file}. Cannot register {model_name} automatically.[/red]")
         return
 
     existing_models = match.group(1).strip()
@@ -59,8 +56,6 @@ def register_model_in_init_beanie(db_file: Path, model_name: str):
 
     new_content = re.sub(pattern, f"await init_beanie(database=db, document_models=[{new_models}])", content)
     db_file.write_text(new_content)
-
-    print(f"[green]✅ {model_name} registered in init_beanie() successfully.[/green]")
 
 
 def inject_auth_routers(routers_file: Path):
@@ -87,7 +82,6 @@ api_router.include_router(user_router)
     )
 
     replace_pattern_in_file(routers_file, pattern, new_router_code.strip())
-    print("[green]✅ Auth routers injected successfully.[/green]")
 
 
 def inject_users_model(models_file: Path, db_choice: str):
@@ -126,4 +120,3 @@ class User(Base):
         raise ValueError(f"Unsupported database choice: {db_choice}")
 
     models_file.write_text(new_model_code)
-    print(f"[green]✅ User model generated for {db_choice}.[/green]")

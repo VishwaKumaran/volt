@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from rich import print
-
 from volt.core.template import copy_template
 from volt.stacks.fastapi.injectors import inject_lifespan_for_mongo, inject_auth_routers, inject_users_model
 
@@ -25,11 +23,3 @@ def setup_auth_templates(dest: Path, auth_choice: str, db_choice: str):
 
     inject_auth_routers(dest / "app" / "routers" / "main.py")
     inject_users_model(dest / "app" / "models" / "user.py", db_choice)
-
-
-def announce_creation(name: str):
-    print(f"[cyan]Creating FastAPI project '{name}'...[/cyan]")
-
-
-def announce_done(name: str):
-    print(f"[green]✅ FastAPI project '{name}' created successfully![/green]")

@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from rich import print
-
 from volt.core.dependencies import install_uv_packages, init_uv_project
 
 STACK_DEPS = ["fastapi", "uvicorn", "pydantic-settings"]
@@ -30,8 +28,6 @@ FASTAPI_AUTH_DEPS = {
 
 
 def install_fastapi_dependencies(dest: Path, db_choice: str, auth_choice: str):
-    print(f"[cyan]Installing dependencies for FastAPI project...[/cyan]")
-
     init_uv_project(dest)
 
     install_uv_packages(STACK_DEPS, dest)
@@ -39,12 +35,8 @@ def install_fastapi_dependencies(dest: Path, db_choice: str, auth_choice: str):
     db_key = db_choice.lower()
     if db_choice != "None" and db_key in FASTAPI_DB_DEPS:
         deps = FASTAPI_DB_DEPS[db_key]
-        print(f"[yellow]→ Adding database dependencies: {', '.join(deps)}[/yellow]")
         install_uv_packages(deps, dest)
 
     if auth_choice != "None" and auth_choice in FASTAPI_AUTH_DEPS:
         deps = FASTAPI_AUTH_DEPS[auth_choice]
-        print(f"[yellow]→ Adding authentication dependencies: {', '.join(deps)}[/yellow]")
         install_uv_packages(deps, dest)
-
-    print(f"[green]✅ Dependencies installed successfully.[/green]")
