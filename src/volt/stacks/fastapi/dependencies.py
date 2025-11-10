@@ -5,8 +5,8 @@ from volt.core.dependencies import install_uv_packages, init_uv_project
 STACK_DEPS = ["fastapi", "uvicorn", "pydantic-settings"]
 
 FASTAPI_DB_DEPS = {
-    "sqlite": ["sqlmodel", "aiosqlite"],
-    "postgresql": ["sqlmodel", "asyncpg"],
+    "sqlite": ["sqlmodel", "aiosqlite", "greenlet"],
+    "postgresql": ["sqlmodel", "asyncpg", "greenlet"],
     "mysql": ["sqlmodel", "aiomysql"],
     "mongodb": ["beanie"],
 }

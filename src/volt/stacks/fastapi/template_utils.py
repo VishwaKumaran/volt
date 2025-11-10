@@ -30,7 +30,7 @@ def prepare_fastapi_template(
 
 
 def copy_fastapi_base_template(dest: Path) -> None:
-    copy_template("fastapi", "base", dest)
+    copy_template("fastapi", "base", dest, True)
 
 
 def add_fastapi_subtemplate(dest: Path, category: str, name: str) -> None:

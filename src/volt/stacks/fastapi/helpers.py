@@ -1,7 +1,8 @@
 from pathlib import Path
 
 from volt.core.template import copy_template
-from volt.stacks.fastapi.injectors import inject_lifespan_for_mongo, inject_auth_routers, inject_users_model
+from volt.stacks.fastapi.injectors import inject_lifespan_for_mongo, inject_auth_routers, inject_users_model, \
+    inject_healthcheck_route
 
 
 def setup_db_templates(dest: Path, db_choice: str):
@@ -13,6 +14,9 @@ def setup_db_templates(dest: Path, db_choice: str):
     elif db_choice in DB_NOSQL_MODEL:
         copy_template("fastapi", "db_mongo", dest, True)
         inject_lifespan_for_mongo(dest / "app" / "main.py")
+
+    if db_choice != "None":
+        inject_healthcheck_route(dest / "app" / "main.py", db_choice)
 
 
 def setup_auth_templates(dest: Path, auth_choice: str, db_choice: str):

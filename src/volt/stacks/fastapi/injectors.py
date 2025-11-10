@@ -58,6 +58,47 @@ def register_model_in_init_beanie(db_file: Path, model_name: str):
     db_file.write_text(new_content)
 
 
+def inject_healthcheck_route(main_file: Path, db_choice: str):
+    content = main_file.read_text()
+    if '@app.get("/health"' in content:
+        print("[yellow]Healthcheck route already exists, skipping.[/yellow]")
+        return
+
+    if db_choice == "MongoDB":
+        health_code = '''
+from fastapi import HTTPException
+from app.core.config import settings
+from app.core.db import client
+
+@app.get("/health", tags=["Health"])
+async def healthcheck():
+    try:
+        await client.admin.command("ping")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
+    return {"status": "ok", "database": "reachable"}
+'''
+    else:
+        health_code = '''
+from sqlalchemy import text
+from fastapi import Depends, HTTPException
+from sqlalchemy.ext.asyncio.session import AsyncSession
+from app.core.db import get_session
+
+@app.get("/health", tags=["Health"])
+async def healthcheck(session: AsyncSession = Depends(get_session)):
+    try:
+        await session.execute(text("SELECT 1"))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
+    return {"status": "ok", "database": "reachable"}
+'''
+
+    pattern = r"app\.include_router\([^\n]+\)\n"
+    new_content = re.sub(pattern, lambda m: m.group(0) + "\n" + health_code.strip() + "\n", content)
+    main_file.write_text(new_content)
+
+
 def inject_auth_routers(routers_file: Path):
     new_router_code = """from fastapi import APIRouter
 

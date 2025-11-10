@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from rich import print
 
@@ -42,19 +43,23 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
         return
 
     try:
-        copy_fastapi_base_template(dest)
+        with TemporaryDirectory() as tmpdir:
+            temp_path = Path(tmpdir)
+            copy_fastapi_base_template(temp_path)
 
-        setup_db_templates(dest, db_choice)
-        setup_auth_templates(dest, auth_choice, db_choice)
+            setup_db_templates(temp_path, db_choice)
+            setup_auth_templates(temp_path, auth_choice, db_choice)
 
-        prepare_fastapi_template(dest, project_name, db_choice, auth_choice)
+            prepare_fastapi_template(temp_path, project_name, db_choice, auth_choice)
+
+            shutil.move(str(temp_path), dest)
 
         if not skip_install:
             install_fastapi_dependencies(dest, db_choice, auth_choice)
     except Exception as e:
         print(f"[red]Error creating FastAPI app: {e}[/red]")
-        if dest.exists():
-            shutil.rmtree(dest)
+        raise e
+        return
 
     print()
     print(f"[green]✔ Successfully created FastAPI app:[/green] [bold]{project_name}[/bold]")

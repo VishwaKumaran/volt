@@ -22,5 +22,12 @@ members = [
     "../../Tests/test_uv",
 ]
 
+[dependency-groups]
+dev = [
+    "fastapi>=0.121.0",
+    "httpx>=0.28.1",
+    "pytest>=8.4.2",
+]
+
 [project.scripts]
 volt = "volt.cli:main"

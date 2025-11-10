@@ -5,15 +5,15 @@ from volt.core.template import add_env_variables
 
 DB_CONFIGS = {
     "SQLite": {
-        "vars": {"DB_PATH": None},
-        "uri": "sqlite+aiosqlite:///{self.DB_PATH}",
+        "vars": {"DB_NAME": None},
+        "uri": "sqlite+aiosqlite:///{self.DB_NAME}",
     },
     "PostgreSQL": {
         "vars": {
-            "DB_HOST": None,
+            "DB_HOST": "localhost",
             "DB_PORT": 5432,
-            "DB_USER": None,
-            "DB_PASSWORD": None,
+            "DB_USER": "postgres",
+            "DB_PASSWORD": "postgres",
             "DB_NAME": None,
         },
         "uri": (
@@ -23,10 +23,10 @@ DB_CONFIGS = {
     },
     "MySQL": {
         "vars": {
-            "DB_HOST": None,
+            "DB_HOST": "localhost",
             "DB_PORT": 3306,
-            "DB_USER": None,
-            "DB_PASSWORD": None,
+            "DB_USER": "root",
+            "DB_PASSWORD": "root",
             "DB_NAME": None,
         },
         "uri": (
