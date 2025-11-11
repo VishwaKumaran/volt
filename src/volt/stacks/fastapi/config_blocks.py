@@ -3,7 +3,7 @@ import secrets
 from pathlib import Path
 
 from volt.core.template import add_env_variables
-from volt.stacks.constants import DB_SQL_MODEL, SQL_DEFAULT_DATABASE, DB_USER_DEFAULT
+from volt.stacks.constants import SQL_DEFAULT_DATABASE, DB_USER_DEFAULT
 
 DB_CONFIGS = {
     "SQLite": {
