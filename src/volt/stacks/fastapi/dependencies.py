@@ -7,7 +7,7 @@ STACK_DEPS = ["fastapi", "uvicorn", "pydantic-settings"]
 FASTAPI_DB_DEPS = {
     "sqlite": ["sqlmodel", "aiosqlite", "greenlet"],
     "postgresql": ["sqlmodel", "asyncpg", "greenlet"],
-    "mysql": ["sqlmodel", "aiomysql"],
+    "mysql": ["sqlmodel", "aiomysql", "greenlet", "cryptography"],
     "mongodb": ["beanie"],
 }
 

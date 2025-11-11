@@ -3,7 +3,7 @@ import secrets
 from pathlib import Path
 
 from volt.core.template import add_env_variables
-from volt.stacks.constants import DB_SQL_MODEL, SQL_DEFAULT_DATABASE
+from volt.stacks.constants import DB_SQL_MODEL, SQL_DEFAULT_DATABASE, DB_USER_DEFAULT
 
 DB_CONFIGS = {
     "SQLite": {
@@ -27,11 +27,10 @@ DB_CONFIGS = {
             "DB_HOST": "localhost",
             "DB_PORT": 3306,
             "DB_USER": "root",
-            "DB_PASSWORD": "root",
-            "DB_NAME": None,
+            "DB_NAME": "mysql",
         },
         "uri": (
-            "mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
+            "mysql+aiomysql://{self.DB_USER}"
             "@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         ),
     },
@@ -61,7 +60,7 @@ def generate_db_block(db_choice: str, env_path: Path, env_example_path: Path, pr
     cfg = DB_CONFIGS[db_choice]
     vars_with_values: dict[str, str | None] = dict(cfg["vars"])
 
-    if db_choice in DB_SQL_MODEL:
+    if db_choice in DB_USER_DEFAULT:
         vars_with_values["DB_USER"] = getpass.getuser()
         vars_with_values["DB_NAME"] = SQL_DEFAULT_DATABASE[db_choice]
     else:
