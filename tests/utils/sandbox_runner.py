@@ -29,6 +29,15 @@ def run_in_project_venv(project_path: Path, script: Path):
     )
 
     if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip(), result.stdout.strip())
+        err_msg = f"""
+        [ERROR] Test script failed in project: {project_path.name}
+
+        --- STDERR ---
+        {result.stderr.strip() or '[empty]'}
+
+        --- STDOUT ---
+        {result.stdout.strip() or '[empty]'}
+        """
+        raise RuntimeError(err_msg.strip())
 
     return result

@@ -11,6 +11,19 @@ TEST_APP_DIR = Path(__file__).parent
 
 
 class TestCreateFastAPIApp:
+    TEST_MATRIX = [
+        # Base
+        ("None", "None", "test_base.py"),
+        # Databases
+        *((db, "None", "test_db.py") for db in ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
+        # Auth Bearer
+        *((db, "Bearer Token (Authorization Header)", "test_auth_bearer.py") for db in
+          ("None", "SQLite", "PostgreSQL", "MySQL", "MongoDB")),
+        # Auth Cookie
+        *((db, "Cookie-based Authentication (HTTPOnly)", "test_auth_cookie.py") for db in
+          ("None", "SQLite", "PostgreSQL", "MySQL", "MongoDB")),
+    ]
+
     @pytest.fixture
     def temp_dir(self):
         with TemporaryDirectory() as tmpdir:
@@ -30,176 +43,11 @@ class TestCreateFastAPIApp:
 
         return run_in_project_venv(app_name, TEST_APP_DIR / test_script)
 
-    @pytest.mark.parametrize(
-        "db_choice,auth_choice,test_script",
-        [
-            ("None", "None", "test_base.py"),
-            ("SQLite", "None", "test_db_sqlmodel.py"),
-            ("PostgreSQL", "None", "test_db_sqlmodel.py"),
-        ],
-    )
+    @pytest.mark.parametrize("db_choice,auth_choice,test_script", TEST_MATRIX)
     def test_generated_fastapi_templates(self, temp_dir, mock_dependencies, db_choice, auth_choice, test_script):
         """Integration tests for generated FastAPI templates."""
         self._run_template_test(temp_dir, mock_dependencies, db_choice, auth_choice, test_script)
 
-    # # Test 4: MySQL database, no authentication
-    # def test_create_app_mysql_no_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with MySQL and no authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = ["MySQL", "None"]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "MySQL", "None"
-    #     )
-    #
-    # # Test 5: MongoDB database, no authentication
-    # def test_create_app_mongodb_no_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with MongoDB and no authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = ["MongoDB", "None"]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "MongoDB", "None"
-    #     )
-    #
-    # # Test 6: No database, Bearer Token authentication
-    # def test_create_app_no_db_bearer_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with no database and Bearer Token authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "None",
-    #         "Bearer Token (Authorization Header)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     assert (app_name / "app" / "routers" / "users" / "router.py").exists()
-    #     assert (app_name / "app" / "core" / "security.py").exists()
-    #     assert (app_name / "app" / "dependencies" / "auth.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "None", "Bearer Token (Authorization Header)"
-    #     )
-    #
-    # # Test 7: No database, Cookie-based authentication
-    # def test_create_app_no_db_cookie_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with no database and Cookie-based authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "None",
-    #         "Cookie-based Authentication (HTTPOnly)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     assert (app_name / "app" / "routers" / "users" / "router.py").exists()
-    #     assert (app_name / "app" / "core" / "security.py").exists()
-    #     assert (app_name / "app" / "dependencies" / "auth.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "None", "Cookie-based Authentication (HTTPOnly)"
-    #     )
-    #
-    # # Test 8: SQLite + Bearer Token authentication
-    # def test_create_app_sqlite_bearer_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with SQLite and Bearer Token authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "SQLite",
-    #         "Bearer Token (Authorization Header)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     assert (app_name / "app" / "models" / "user.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "SQLite", "Bearer Token (Authorization Header)"
-    #     )
-    #
-    # # Test 9: PostgreSQL + Bearer Token authentication
-    # def test_create_app_postgresql_bearer_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with PostgreSQL and Bearer Token authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "PostgreSQL",
-    #         "Bearer Token (Authorization Header)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "PostgreSQL", "Bearer Token (Authorization Header)"
-    #     )
-    #
-    # # Test 10: MySQL + Cookie-based authentication
-    # def test_create_app_mysql_cookie_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with MySQL and Cookie-based authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "MySQL",
-    #         "Cookie-based Authentication (HTTPOnly)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "MySQL", "Cookie-based Authentication (HTTPOnly)"
-    #     )
-    #
-    # # Test 11: MongoDB + Bearer Token authentication
-    # def test_create_app_mongodb_bearer_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with MongoDB and Bearer Token authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "MongoDB",
-    #         "Bearer Token (Authorization Header)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "MongoDB", "Bearer Token (Authorization Header)"
-    #     )
-    #
-    # # Test 12: MongoDB + Cookie-based authentication
-    # def test_create_app_mongodb_cookie_auth(self, temp_dir, mock_dependencies):
-    #     """Test creating a FastAPI app with MongoDB and Cookie-based authentication."""
-    #     app_name = temp_dir / "test_app"
-    #     mock_dependencies["choose"].side_effect = [
-    #         "MongoDB",
-    #         "Cookie-based Authentication (HTTPOnly)"
-    #     ]
-    #
-    #     create_fastapi_app(app_name)
-    #
-    #     assert app_name.exists()
-    #     assert (app_name / "app" / "core" / "db.py").exists()
-    #     assert (app_name / "app" / "routers" / "auth" / "router.py").exists()
-    #     mock_dependencies["install"].assert_called_once_with(
-    #         app_name, "MongoDB", "Cookie-based Authentication (HTTPOnly)"
-    #     )
     #
     # # Test 13: App already exists
     # def test_create_app_already_exists(self, temp_dir, mock_dependencies, capsys):
