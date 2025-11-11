@@ -1,7 +1,9 @@
+import getpass
 import secrets
 from pathlib import Path
 
 from volt.core.template import add_env_variables
+from volt.stacks.constants import DB_SQL_MODEL, SQL_DEFAULT_DATABASE
 
 DB_CONFIGS = {
     "SQLite": {
@@ -12,12 +14,11 @@ DB_CONFIGS = {
         "vars": {
             "DB_HOST": "localhost",
             "DB_PORT": 5432,
-            "DB_USER": "postgres",
-            "DB_PASSWORD": "postgres",
-            "DB_NAME": None,
+            "DB_USER": None,
+            "DB_NAME": "postgres",
         },
         "uri": (
-            "postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            "postgresql+asyncpg://{self.DB_USER}"
             "@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         ),
     },
@@ -60,8 +61,12 @@ def generate_db_block(db_choice: str, env_path: Path, env_example_path: Path, pr
     cfg = DB_CONFIGS[db_choice]
     vars_with_values: dict[str, str | None] = dict(cfg["vars"])
 
-    if "DB_NAME" in vars_with_values and not vars_with_values["DB_NAME"]:
-        vars_with_values["DB_NAME"] = project_name
+    if db_choice in DB_SQL_MODEL:
+        vars_with_values["DB_USER"] = getpass.getuser()
+        vars_with_values["DB_NAME"] = SQL_DEFAULT_DATABASE[db_choice]
+    else:
+        if "DB_NAME" in vars_with_values and not vars_with_values["DB_NAME"]:
+            vars_with_values["DB_NAME"] = project_name
 
     add_env_variables(env_path, vars_with_values)
     add_env_variables(env_example_path, {k: None for k in vars_with_values})
