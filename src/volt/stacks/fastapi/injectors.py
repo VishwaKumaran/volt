@@ -65,26 +65,27 @@ def inject_healthcheck_route(main_file: Path, db_choice: str):
         return
 
     if db_choice == "MongoDB":
-        health_code = '''
-from fastapi import HTTPException
+        import_code = '''from fastapi import HTTPException
 from app.core.config import settings
-from app.core.db import client
-
+import app.core.db as db'''
+        health_code = '''
 @app.get("/health", tags=["Health"])
 async def healthcheck():
     try:
-        await client.admin.command("ping")
+        if not db.client:
+            raise Exception("Database not initialized")
+        await db.client.admin.command("ping")
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
     return {"status": "ok", "database": "reachable"}
 '''
     else:
-        health_code = '''
-from sqlalchemy import text
+        import_code = '''
+        from sqlalchemy import text
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio.session import AsyncSession
-from app.core.db import get_session
-
+from app.core.db import get_session'''
+        health_code = '''
 @app.get("/health", tags=["Health"])
 async def healthcheck(session: AsyncSession = Depends(get_session)):
     try:
@@ -93,6 +94,15 @@ async def healthcheck(session: AsyncSession = Depends(get_session)):
         raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
     return {"status": "ok", "database": "reachable"}
 '''
+
+    if import_code.strip() not in content:
+        pattern_import = r"(?:(?:from|import)\s+[^\n]+\n)+"
+        match = re.search(pattern_import, content)
+        if match:
+            insert_pos = match.end()
+            content = content[:insert_pos] + "\n" + import_code.strip() + "\n\n" + content[insert_pos:]
+        else:
+            content = import_code.strip() + "\n\n" + content
 
     pattern = r"app\.include_router\([^\n]+\)\n"
     new_content = re.sub(pattern, lambda m: m.group(0) + "\n" + health_code.strip() + "\n", content)
