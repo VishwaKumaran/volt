@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -11,7 +12,7 @@ def run_in_project_venv(project_path: Path, script: Path):
         raise RuntimeError("Virtual environment not found in generated project.")
 
     add_proc = subprocess.run(
-        ["uv", "add", ", ".join(TEST_DEPENDENCIES)],
+        ["uv", "add", *TEST_DEPENDENCIES],
         cwd=project_path,
         check=True,
         capture_output=True,
@@ -19,6 +20,10 @@ def run_in_project_venv(project_path: Path, script: Path):
     )
     if add_proc.returncode != 0:
         raise RuntimeError(f"Failed to install {', '.join(TEST_DEPENDENCIES)} dependencies in project venv")
+
+    utils_dir = project_path / "tests_utils"
+    utils_dir.mkdir(exist_ok=True)
+    shutil.copy(Path(__file__).parent / "db_utils.py", utils_dir / "db_utils.py")
 
     result = subprocess.run(
         [str(venv_python), str(script.resolve())],

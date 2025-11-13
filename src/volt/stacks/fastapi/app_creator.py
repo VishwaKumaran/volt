@@ -38,7 +38,7 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
                 "Cookie-based Authentication (HTTPOnly)",
             ],
             default="None",
-        )
+        ) if db_choice != "None" else "None"
     except KeyboardInterrupt:
         return
 

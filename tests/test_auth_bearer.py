@@ -1,13 +1,15 @@
-import pytest
+import asyncio
+
 from app.core.security import verify_password
 from app.main import app
 from app.models.user import User
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
 
+from tests_utils.db_utils import delete_user, find_user
 
-@pytest.mark.asyncio
-async def test_register_and_login_flow(monkeypatch):
+
+async def test_register_and_login_flow():
     """
     Complete test of registration and login flow:
     - register a new user
@@ -17,7 +19,6 @@ async def test_register_and_login_flow(monkeypatch):
     - /users/me works if bearer token is set
     - /users/me failed if bearer token is not set or invalid
     """
-
     test_user = {
         "username": "test_user",
         "email": "test_user@example.com",
@@ -25,7 +26,7 @@ async def test_register_and_login_flow(monkeypatch):
     }
 
     # Cleanup before test
-    await User.find_many(User.username == test_user["username"]).delete()
+    # await delete_user(User, test_user["username"])
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # --- Register ---
@@ -36,7 +37,7 @@ async def test_register_and_login_flow(monkeypatch):
         assert data["token_type"] == "bearer"
 
         # Check if the user is created
-        user_db = await User.find_one(User.username == test_user["username"])
+        user_db = await find_user(User, test_user["username"])
         assert user_db is not None
         assert verify_password(test_user["password"], user_db.hashed_password)
 
@@ -76,4 +77,8 @@ async def test_register_and_login_flow(monkeypatch):
         assert r4.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}
 
     # Cleanup after test
-    await User.find_many(User.username == test_user["username"]).delete()
+    await delete_user(User, test_user["username"])
+
+
+if __name__ == "__main__":
+    asyncio.run(test_register_and_login_flow())

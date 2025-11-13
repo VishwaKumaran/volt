@@ -18,10 +18,10 @@ class TestCreateFastAPIApp:
         *((db, "None", "test_db.py") for db in ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
         # Auth Bearer
         *((db, "Bearer Token (Authorization Header)", "test_auth_bearer.py") for db in
-          ("None", "SQLite", "PostgreSQL", "MySQL", "MongoDB")),
+          ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
         # Auth Cookie
         *((db, "Cookie-based Authentication (HTTPOnly)", "test_auth_cookie.py") for db in
-          ("None", "SQLite", "PostgreSQL", "MySQL", "MongoDB")),
+          ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
     ]
 
     @pytest.fixture
@@ -36,7 +36,7 @@ class TestCreateFastAPIApp:
 
     def _run_template_test(self, temp_dir: Path, mock_dependencies, db_choice: str, auth_choice: str, test_script: str):
         """Helper to create and validate generated FastAPI projects."""
-        app_name = temp_dir / f"test_app_{db_choice.lower()}_{auth_choice.lower()}"
+        app_name = temp_dir / f"test_app"
         mock_dependencies["choose"].side_effect = [db_choice, auth_choice]
 
         create_fastapi_app(app_name, skip_install=False)

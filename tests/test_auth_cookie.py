@@ -1,12 +1,14 @@
-import pytest
+import asyncio
+
 from app.core.security import verify_password
 from app.main import app
 from app.models.user import User
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
 
+from tests_utils.db_utils import delete_user, find_user
 
-@pytest.mark.asyncio
+
 async def test_auth_cookie_flow():
     """
     Complete test of registration and login flow:
@@ -25,7 +27,7 @@ async def test_auth_cookie_flow():
     }
 
     # Cleanup avant test
-    await User.find_many(User.username == test_user["username"]).delete()
+    # await delete_user(User, test_user["username"])
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # --- Register user ---
@@ -34,7 +36,7 @@ async def test_auth_cookie_flow():
         assert "set-cookie" in r.headers
         assert "access_token=" in r.headers["set-cookie"]
 
-        user_db = await User.find_one(User.username == test_user["username"])
+        user_db = await find_user(User, test_user["username"])
         assert user_db is not None
         assert verify_password(test_user["password"], user_db.hashed_password)
 
@@ -79,4 +81,8 @@ async def test_auth_cookie_flow():
         assert r5.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}
 
     # Cleanup après test
-    await User.find_many(User.username == test_user["username"]).delete()
+    await delete_user(User, test_user["username"])
+
+
+if __name__ == "__main__":
+    asyncio.run(test_auth_cookie_flow())

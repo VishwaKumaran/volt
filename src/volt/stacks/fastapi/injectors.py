@@ -116,7 +116,7 @@ from app.core.config import settings
 from app.routers.auth.router import router as auth_router
 from app.routers.users.router import router as user_router
 
-api_router = APIRouter(prefix=settings.API_V1)
+api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(user_router)
 """
@@ -129,7 +129,7 @@ api_router.include_router(user_router)
 
     pattern = (
         r"from fastapi import APIRouter\s+from app\.core\.config import settings\s+"
-        r"api_router = APIRouter\(prefix=settings\.API_V1\)"
+        r"api_router = APIRouter\(\)"
     )
 
     replace_pattern_in_file(routers_file, pattern, new_router_code.strip())
