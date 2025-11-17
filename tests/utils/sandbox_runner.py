@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-TEST_DEPENDENCIES = ["httpx"]
+TEST_DEPENDENCIES = ["httpx", "pytest", "pytest-asyncio", "asgi-lifespan"]
 
 
 def run_in_project_venv(project_path: Path, script: Path):
@@ -26,7 +26,7 @@ def run_in_project_venv(project_path: Path, script: Path):
     shutil.copy(Path(__file__).parent / "db_utils.py", utils_dir / "db_utils.py")
 
     result = subprocess.run(
-        [str(venv_python), str(script.resolve())],
+        [str(venv_python), "-m", "pytest", str(script.resolve())],
         cwd=project_path,
         capture_output=True,
         text=True,

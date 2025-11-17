@@ -20,7 +20,7 @@ async def login(
         session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(select(User).where(User.username == form.username))
-    user = result.first()
+    user = result.scalar_one_or_none()
 
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(

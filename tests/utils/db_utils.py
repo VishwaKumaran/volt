@@ -4,8 +4,9 @@ async def delete_user(User, username):
         if user:
             await user.delete()
     else:  # SQLModel
-        from sqlalchemy import delete
+        from sqlmodel import delete
         from app.core.db import async_session
+
         async with async_session() as session:
             await session.execute(delete(User).where(User.username == username))
             await session.commit()
@@ -16,5 +17,8 @@ async def find_user(User, username):
         return await User.find_one(User.username == username)
     else:
         from app.core.db import async_session
+        from sqlmodel import select
+
         async with async_session() as session:
-            return await session.execute(User.select().where(User.username == username))
+            res = await session.execute(select(User).where(User.username == username))
+            return res.scalar_one_or_none()

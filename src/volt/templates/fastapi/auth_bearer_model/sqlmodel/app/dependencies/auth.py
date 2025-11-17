@@ -30,8 +30,9 @@ async def get_current_user(
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
-    user = await session.execute(select(User).where(User.username == username))
-    if not user.first():
+    res = await session.execute(select(User).where(User.username == username))
+    user = res.scalar_one_or_none()
+    if not user:
         raise credentials_exception
     return user
 
