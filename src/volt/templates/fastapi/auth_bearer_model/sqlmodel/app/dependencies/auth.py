@@ -3,15 +3,21 @@ from typing import Annotated
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import decode, InvalidTokenError
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette import status
 
 from app.core.config import settings
+from app.core.db import get_session
 from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1}/login/access-token")
 
 
-async def get_current_user(token: str = Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(
+        token: Annotated[str, Depends(oauth2_scheme)],
+        session: Annotated[AsyncSession, Depends(get_session)],
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -24,8 +30,8 @@ async def get_current_user(token: str = Annotated[str, Depends(oauth2_scheme)]):
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
-    user = await User.find_one(User.username == username)
-    if user is None:
+    user = await session.execute(select(User).where(User.username == username))
+    if not user.first():
         raise credentials_exception
     return user
 

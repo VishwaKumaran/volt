@@ -4,7 +4,7 @@ from pathlib import Path
 from rich import print
 
 from volt.core.injectors import replace_pattern_in_file
-from volt.stacks.constants import DB_SQL_MODEL
+from volt.stacks.constants import DB_SQL_MODEL, DB_NOSQL_MODEL
 
 
 def inject_lifespan_for_mongo(main_file: Path):
@@ -34,6 +34,43 @@ async def lifespan(app: FastAPI):
         content,
     )
     main_file.write_text(new_content)
+
+
+def inject_lifespan_for_sqlmodel(main_file: Path):
+    content = main_file.read_text()
+    if "lifespan=" in content:
+        return
+
+    pattern = r"app\s*=\s*FastAPI\s*\(([^)]*)\)"
+    match = re.search(pattern, content)
+    if not match:
+        raise RuntimeError("FastAPI app instance not found in main.py")
+
+    lifespan_code = """\n
+from contextlib import asynccontextmanager
+from app.core.db import init_db
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+"""
+
+    new_content = re.sub(
+        pattern,
+        f"{lifespan_code}\napp = FastAPI(\\1, lifespan=lifespan)",
+        content,
+    )
+    main_file.write_text(new_content)
+
+
+def inject_lifespan(db_choice: str, main_file: Path):
+    if db_choice in DB_NOSQL_MODEL:
+        inject_lifespan_for_mongo(main_file)
+    elif db_choice in DB_SQL_MODEL:
+        inject_lifespan_for_sqlmodel(main_file)
+    else:
+        raise ValueError(f"Unsupported database choice: {db_choice}")
 
 
 def register_model_in_init_beanie(db_file: Path, model_name: str):
@@ -152,20 +189,16 @@ class User(Document):
         name = "users"
 """
     elif db_choice in DB_SQL_MODEL:
-        new_model_code = """from sqlalchemy import Boolean, Column, Integer, String
-from sqlalchemy.orm import declarative_base
+        new_model_code = """from typing import Optional
 
-Base = declarative_base()
+from sqlmodel import SQLModel, Field
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, nullable=False, index=True)
-    email = Column(String, unique=True, nullable=False, index=True)
-    hashed_password = Column(String, nullable=False)
-    disabled = Column(Boolean, default=False)
+class User(SQLModel, table=True):
+    username: str = Field(index=True, nullable=False, unique=True)
+    email: str = Field(index=True, nullable=False, unique=True)
+    hashed_password: str
+    disabled: bool = False
 """
     else:
         raise ValueError(f"Unsupported database choice: {db_choice}")
