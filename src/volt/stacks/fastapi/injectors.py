@@ -76,10 +76,22 @@ def inject_lifespan(db_choice: str, main_file: Path):
 def register_model_in_init_beanie(db_file: Path, model_name: str):
     content = db_file.read_text()
 
+    import_stmt = f"from app.models.{model_name.lower()} import {model_name.capitalize()}"
+
+    if import_stmt not in content:
+        content = re.sub(
+            r"^(from .+|import .+)$",
+            r"\1\n" + import_stmt,
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+
     pattern = r"await\s+init_beanie\s*\(\s*database\s*=\s*db\s*,\s*document_models\s*=\s*\[([^\]]*)\]\s*\)"
     match = re.search(pattern, content, flags=re.DOTALL)
 
     if not match:
+        db_file.write_text(content)
         return
 
     existing_models = match.group(1).strip()
