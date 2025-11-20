@@ -27,7 +27,7 @@ DB_CONFIGS = {
             "DB_HOST": "localhost",
             "DB_PORT": 3306,
             "DB_USER": "root",
-            "DB_NAME": "mysql",
+            "DB_NAME": None,
         },
         "uri": (
             "mysql+aiomysql://{self.DB_USER}"
