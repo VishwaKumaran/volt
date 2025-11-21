@@ -8,6 +8,7 @@ from app.models.user import User
 from asgi_lifespan import LifespanManager
 from fastapi import status
 from httpx import AsyncClient, ASGITransport
+
 from tests_utils.db_utils import delete_user, find_user
 
 
