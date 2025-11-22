@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 
 from rich import print
 
+from volt.core.config import VoltConfig, save_config
 from volt.core.prompts import choose
 from volt.stacks.fastapi.dependencies import install_fastapi_dependencies
 from volt.stacks.fastapi.helpers import (
@@ -53,6 +54,16 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
             prepare_fastapi_template(temp_path, project_name, db_choice, auth_choice)
 
             shutil.move(str(temp_path), dest)
+
+            config = VoltConfig(
+                project_name=project_name,
+                stack="fastapi",
+                features={
+                    "database": db_choice,
+                    "auth": auth_choice,
+                }
+            )
+            save_config(config, dest / "volt.toml")
 
         if not skip_install:
             install_fastapi_dependencies(dest, db_choice, auth_choice)
