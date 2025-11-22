@@ -12,3 +12,6 @@ wheels/
 
 .cadence/
 .idea/
+
+
+.DS_Store
