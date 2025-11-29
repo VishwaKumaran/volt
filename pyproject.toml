@@ -33,6 +33,10 @@ members = [
     "../../Tests/test_uv",
 ]
 
+[tool.uv.build-backend]
+module-name = "volt"
+namespace = true
+
 [dependency-groups]
 dev = [
     "fastapi>=0.121.0",
