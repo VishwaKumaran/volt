@@ -1,5 +1,5 @@
 [project]
-name = "volt"
+name = "volt-cli"
 version = "0.1.0"
 description = "An extremely fast template and stack manager for Python projects."
 readme = "README.md"
