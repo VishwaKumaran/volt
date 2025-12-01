@@ -1,6 +1,6 @@
 [project]
 name = "volt-cli"
-version = "0.1.0"
+version = "0.1.0alpha"
 description = "An extremely fast template and stack manager for Python projects."
 readme = "README.md"
 authors = [
