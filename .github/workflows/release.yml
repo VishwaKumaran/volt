@@ -61,7 +61,7 @@ jobs:
 
           echo "Building $OUT"
 
-          uv run pyinstaller --onefile --name volt src/volt_cli/__main__.py
+          uv run pyinstaller --onefile --name volt src/volt/cli.py
           mv dist/volt "$OUT"
 
           echo "ARTIFACT=$OUT" >> $GITHUB_ENV
