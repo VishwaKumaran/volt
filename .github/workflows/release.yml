@@ -6,6 +6,93 @@ on:
       - v*
 
 jobs:
+  build:
+    name: Build ${{ matrix.os }} / ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos
+            arch: arm64
+            runner: macos-latest
+          - os: macos
+            arch: x86_64
+            runner: macos-latest
+          - os: linux
+            arch: x86_64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install Python
+        run: uv sync
+
+      - name: Install dependencies
+        run: uv pip install pyinstaller
+
+      - name: Build binary
+        run: |
+          mkdir -p dist
+
+          case "${{ matrix.os }}-${{ matrix.arch }}" in
+            macos-arm64)
+              OUT="volt-macos-arm64"
+              ;;
+            macos-x86_64)
+              OUT="volt-macos-x86_64"
+              ;;
+            linux-x86_64)
+              OUT="volt-linux-x86_64"
+              ;;
+            linux-arm64)
+              OUT="volt-linux-arm64"
+              ;;
+          esac
+
+          echo "Building $OUT"
+
+          uv run pyinstaller --onefile --name volt src/volt_cli/__main__.py
+          mv dist/volt "$OUT"
+
+          echo "ARTIFACT=$OUT" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: ${{ env.ARTIFACT }}
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          shasum -a 256 * > SHASUMS.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+  
   pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest
