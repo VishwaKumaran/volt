@@ -26,6 +26,9 @@ jobs:
           - os: linux
             arch: arm64
             runner: ubuntu-latest
+          - os: windows
+            arch: x86_64
+            runner: windows-latest
 
     steps:
       - name: Checkout
@@ -39,8 +42,10 @@ jobs:
 
       - name: Install dependencies
         run: uv pip install pyinstaller
+        shell: bash
 
       - name: Build binary
+        shell: bash
         run: |
           mkdir -p dist
 
@@ -57,13 +62,20 @@ jobs:
             linux-arm64)
               OUT="volt-linux-arm64"
               ;;
+            windows-x86_64)
+              OUT="volt-windows-x86_64.exe"
+              ;;
           esac
 
           echo "Building $OUT"
 
           uv run pyinstaller --onefile --name volt src/volt/cli.py
           mkdir -p dist-out
-          mv dist/volt "dist-out/$OUT"
+          if [[ "${{ matrix.os }}" == "windows" ]]; then
+            mv dist/volt.exe "dist-out/$OUT"
+          else
+            mv dist/volt "dist-out/$OUT"
+          fi
 
           echo "ARTIFACT=$OUT" >> $GITHUB_ENV
 
