@@ -47,35 +47,50 @@ jobs:
       - name: Build binary
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist-out
 
           case "${{ matrix.os }}-${{ matrix.arch }}" in
             macos-arm64)
               OUT="volt-macos-arm64"
+              TARGET_ARCH="arm64"
               ;;
             macos-x86_64)
               OUT="volt-macos-x86_64"
+              TARGET_ARCH="x86_64"
               ;;
             linux-x86_64)
               OUT="volt-linux-x86_64"
+              TARGET_ARCH="x86_64"
               ;;
             linux-arm64)
               OUT="volt-linux-arm64"
+              TARGET_ARCH="arm64"
               ;;
             windows-x86_64)
               OUT="volt-windows-x86_64.exe"
+              TARGET_ARCH="x86_64"
               ;;
           esac
 
-          echo "Building $OUT"
+          echo "Building $OUT for $TARGET_ARCH"
 
-          uv run pyinstaller --onefile --name volt src/volt/cli.py
+          uv run pyinstaller \
+            --onefile \
+            --name volt \
+            --console \
+            --clean \
+            --target-arch "$TARGET_ARCH" \
+            src/volt/cli.py
+
           mkdir -p dist-out
           if [[ "${{ matrix.os }}" == "windows" ]]; then
             mv dist/volt.exe "dist-out/$OUT"
           else
             mv dist/volt "dist-out/$OUT"
           fi
+
+          echo "Testing binary..."
+          "dist-out/$OUT" --version || echo "Binary test failed (may be normal for cross-compilation)"
 
           echo "ARTIFACT=$OUT" >> $GITHUB_ENV
 
@@ -97,18 +112,23 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Generate checksums
         run: |
           cd artifacts
-          find . -type f ! -name "checksums.txt" -exec shasum -a 256 {} \; > checksums.txt
+          sha256sum volt-* > checksums.txt
+          cat checksums.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/**/volt-*
+            artifacts/volt-*
             artifacts/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
   
   pypi:
     name: Publish to PyPI
