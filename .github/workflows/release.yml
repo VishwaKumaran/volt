@@ -66,7 +66,13 @@ jobs:
           echo "Building $OUT"
 
           mkdir -p dist-out
-          uv build --binary --output dist-out/$OUT
+          uv build --binary
+
+          if [[ "${{ matrix.os }}" == "windows" ]]; then
+            mv dist/volt.exe "dist-out/$OUT"
+          else
+            mv dist/volt "dist-out/$OUT"
+          fi
           
           echo "ARTIFACT=$OUT" >> $GITHUB_ENV
 
