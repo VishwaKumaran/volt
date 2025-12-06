@@ -34,6 +34,12 @@ TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" \
   | grep '"tag_name"' \
   | sed -E 's/.*"([^"]+)".*/\1/')
 
+if [ -z "$TAG" ]; then
+  echo "❌ Error: Unable to find latest release tag."
+  echo "Typically this happens if no releases have been published yet."
+  exit 1
+fi
+
 URL="https://github.com/$REPO/releases/download/$TAG/$FILE"
 
 echo "Downloading: $URL"
@@ -43,7 +49,10 @@ INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
 # Download
-curl -L "$URL" -o "$INSTALL_DIR/$BINARY_NAME"
+if ! curl -L --fail "$URL" -o "$INSTALL_DIR/$BINARY_NAME"; then
+  echo "❌ Error: Download failed."
+  exit 1
+fi
 
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
