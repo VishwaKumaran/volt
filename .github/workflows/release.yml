@@ -17,6 +17,9 @@ jobs:
           - os: macos
             arch: arm64
             runner: macos-latest
+          - os: macos
+            arch: x86_64
+            runner: macos-latest
           - os: linux
             arch: x86_64
             runner: ubuntu-latest
