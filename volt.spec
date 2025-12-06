@@ -19,7 +19,8 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
+    # Filter out mypyc and tomli binary extensions to force pure Python usage
+    [x for x in a.binaries if 'mypyc' not in x[0] and 'tomli' not in x[0]],
     a.datas,
     [],
     name='volt',
