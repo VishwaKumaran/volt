@@ -69,7 +69,7 @@ jobs:
 
           echo "Building $OUT"
 
-          uv run pyinstaller --onefile --name volt volt.spec  s
+          uv run pyinstaller --onefile --name volt volt.spec
           mkdir -p dist-out
           if [[ "${{ matrix.os }}" == "windows" ]]; then
             mv dist/volt.exe "dist-out/$OUT"
