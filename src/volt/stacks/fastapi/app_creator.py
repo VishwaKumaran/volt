@@ -4,20 +4,20 @@ from tempfile import TemporaryDirectory
 
 from rich import print
 
-from volt.core.config import VoltConfig, save_config
-from volt.core.prompts import choose
-from volt.stacks.fastapi.dependencies import install_fastapi_dependencies
-from volt.stacks.fastapi.helpers import (
-    setup_db_templates,
-    setup_auth_templates,
-)
-from volt.stacks.fastapi.template_utils import (
-    copy_fastapi_base_template,
-    prepare_fastapi_template,
-)
-
 
 def create_fastapi_app(name: Path | str, skip_install: bool = False):
+    from volt.core.config import VoltConfig, save_config
+    from volt.core.prompts import choose
+    from volt.stacks.fastapi.dependencies import install_fastapi_dependencies
+    from volt.stacks.fastapi.helpers import (
+        setup_db_templates,
+        setup_auth_templates,
+    )
+    from volt.stacks.fastapi.template_utils import (
+        copy_fastapi_base_template,
+        prepare_fastapi_template,
+    )
+
     dest = Path(name)
     project_name = dest.name
 
@@ -31,15 +31,19 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
             choices=["None", "SQLite", "PostgreSQL", "MySQL", "MongoDB"],
             default="None",
         )
-        auth_choice = choose(
-            "Select an authentication method:",
-            choices=[
-                "None",
-                "Bearer Token (Authorization Header)",
-                "Cookie-based Authentication (HTTPOnly)",
-            ],
-            default="None",
-        ) if db_choice != "None" else "None"
+        auth_choice = (
+            choose(
+                "Select an authentication method:",
+                choices=[
+                    "None",
+                    "Bearer Token (Authorization Header)",
+                    "Cookie-based Authentication (HTTPOnly)",
+                ],
+                default="None",
+            )
+            if db_choice != "None"
+            else "None"
+        )
     except KeyboardInterrupt:
         return
 
@@ -61,7 +65,7 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
                 features={
                     "database": db_choice,
                     "auth": auth_choice,
-                }
+                },
             )
             save_config(config, dest / "volt.toml")
 
@@ -73,7 +77,9 @@ def create_fastapi_app(name: Path | str, skip_install: bool = False):
         return
 
     print()
-    print(f"[green]✔ Successfully created FastAPI app:[/green] [bold]{project_name}[/bold]")
+    print(
+        f"[green]✔ Successfully created FastAPI app:[/green] [bold]{project_name}[/bold]"
+    )
     print(f"[dim]Location:[/dim] [blue]{dest.resolve()}[/blue]")
     print()
     print("[bold]Next steps:[/bold]")
