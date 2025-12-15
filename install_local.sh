@@ -7,23 +7,34 @@ LOCAL_BUILD_PATH="./dist/volt"
 
 echo "Looking for local build at: $LOCAL_BUILD_PATH"
 
-if [ ! -f "$LOCAL_BUILD_PATH" ]; then
-  echo "❌ Error: Local build not found at $LOCAL_BUILD_PATH"
+if [ ! -d "$LOCAL_BUILD_PATH" ]; then
+  echo "❌ Error: Local build directory not found at $LOCAL_BUILD_PATH"
   echo "Please build the project first."
   exit 1
 fi
 
-# Create local bin dir if needed
-INSTALL_DIR="$HOME/.local/bin"
-mkdir -p "$INSTALL_DIR"
+# Create local directories
+INSTALL_BIN_DIR="$HOME/.local/bin"
+INSTALL_LIB_DIR="$HOME/.local/lib/volt"
+mkdir -p "$INSTALL_BIN_DIR"
 
-# Copy the binary
-echo "Installing..."
-cp "$LOCAL_BUILD_PATH" "$INSTALL_DIR/$BINARY_NAME"
+# Clean old installation
+echo "Cleaning old installation..."
+rm -rf "$INSTALL_LIB_DIR"
+rm -f "$INSTALL_BIN_DIR/volt"
 
-chmod +x "$INSTALL_DIR/$BINARY_NAME"
+# Copy the build directory
+echo "Installing to $INSTALL_LIB_DIR..."
+mkdir -p "$(dirname "$INSTALL_LIB_DIR")"
+cp -r "$LOCAL_BUILD_PATH" "$INSTALL_LIB_DIR"
 
-echo "Installed to: $INSTALL_DIR/$BINARY_NAME"
+# Create symlink
+echo "Creating symlink in $INSTALL_BIN_DIR..."
+ln -s "$INSTALL_LIB_DIR/volt" "$INSTALL_BIN_DIR/volt"
+
+chmod +x "$INSTALL_LIB_DIR/volt"
+
+echo "Installed to: $INSTALL_BIN_DIR/volt (linked from $INSTALL_LIB_DIR)"
 
 # Add to PATH if needed
 if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then

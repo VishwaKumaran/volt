@@ -1,4 +1,4 @@
-from typer import Typer
+from typer import Typer, Option, Context, Exit
 
 from volt.stacks.fastapi.cli import fastapi_app
 from volt.add_cli import add_app
@@ -9,7 +9,34 @@ app = Typer(
 )
 
 app.add_typer(fastapi_app, name="fastapi", no_args_is_help=True)
-app.add_typer(add_app, name="add", help="Add features to an existing project.", no_args_is_help=True)
+app.add_typer(
+    add_app,
+    name="add",
+    help="Add features to an existing project.",
+    no_args_is_help=True,
+)
+
+
+def version_callback(value: bool):
+    if value:
+        from importlib.metadata import version
+
+        print(f"volt {version('volt-cli')}")
+        raise Exit()
+
+
+@app.callback()
+def common(
+    ctx: Context,
+    version: bool = Option(
+        None,
+        "--version",
+        "-v",
+        callback=version_callback,
+        help="Display the volt version",
+    ),
+):
+    pass
 
 
 def main():

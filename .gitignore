@@ -12,6 +12,7 @@ wheels/
 
 .cadence/
 .idea/
+.agent/
 
 
 .DS_Store
