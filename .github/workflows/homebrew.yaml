@@ -1,0 +1,21 @@
+name: Homebrew tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Dispatch to homebrew-volt
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.TOKEN }}
+          repository: VishwaKumaran/homebrew-volt
+          event-type: volt-release
+          client-payload: |
+            {
+              "version": "${{ github.event.release.tag_name }}"
+            }
