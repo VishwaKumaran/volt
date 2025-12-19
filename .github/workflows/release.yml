@@ -103,13 +103,18 @@ jobs:
           cd artifacts
           find . -type f ! -name "checksums.txt" -exec shasum -a 256 {} \; > checksums.txt
 
+      - name: Flatten artifacts
+        run: |
+          mkdir release-files
+          find artifacts -type f -name "volt-*" -exec cp {} release-files/ \;
+          cp artifacts/checksums.txt release-files/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/**/volt-*
-            artifacts/checksums.txt
-  
+            release-files/*
+
   pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest
