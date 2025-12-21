@@ -74,7 +74,7 @@ jobs:
           if [[ "${{ matrix.os }}" == "windows" ]]; then
             mv dist/volt/volt.exe "dist-out/$OUT"
           else
-            mv dist/volt "dist-out/$OUT"
+            tar -czf "dist-out/$OUT.tar.gz" -C dist volt
           fi
 
           echo "ARTIFACT=$OUT" >> $GITHUB_ENV
