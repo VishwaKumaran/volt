@@ -71,13 +71,17 @@ jobs:
 
           uv run pyinstaller volt.spec
           mkdir -p dist-out
+          
+          cd dist
           if [[ "${{ matrix.os }}" == "windows" ]]; then
-            mv dist/volt.exe "dist-out/$OUT"
+            powershell -Command "Compress-Archive -Path volt -DestinationPath ../dist-out/$OUT.zip"
+            echo "ARTIFACT=$OUT.zip" >> $GITHUB_ENV
           else
-            mv dist/volt "dist-out/$OUT"
+            tar -czf "../dist-out/$OUT.tar.gz" volt
+            echo "ARTIFACT=$OUT.tar.gz" >> $GITHUB_ENV
           fi
+          cd ..
 
-          echo "ARTIFACT=$OUT" >> $GITHUB_ENV
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
