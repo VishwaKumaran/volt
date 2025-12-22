@@ -11,15 +11,15 @@ ARCH="$(uname -m)"
 case "$OS" in
   linux)
     case "$ARCH" in
-      x86_64) FILE="volt-linux-x86_64" ;;
-      aarch64|arm64) FILE="volt-linux-arm64" ;;
+      x86_64) FILE="volt-linux-x86_64.tar.gz" ;;
+      aarch64|arm64) FILE="volt-linux-arm64.tar.gz" ;;
       *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
     esac
     ;;
   darwin)
     case "$ARCH" in
-      x86_64) FILE="volt-macos-x86_64" ;;
-      arm64)  FILE="volt-macos-arm64" ;;
+      x86_64) FILE="volt-macos-x86_64.tar.gz" ;;
+      arm64)  FILE="volt-macos-arm64.tar.gz" ;;
       *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
     esac
     ;;
@@ -49,8 +49,25 @@ INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
 # Download
-if ! curl -L --fail "$URL" -o "$INSTALL_DIR/$BINARY_NAME"; then
+echo "Downloading archive..."
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+if ! curl -L --fail "$URL" -o "$TMP_DIR/$FILE"; then
   echo "❌ Error: Download failed."
+  exit 1
+fi
+
+# Extract
+tar -xzf "$TMP_DIR/$FILE" -C "$TMP_DIR"
+
+# Install
+if [ -f "$TMP_DIR/volt" ]; then
+  mv "$TMP_DIR/volt" "$INSTALL_DIR/$BINARY_NAME"
+else
+  echo "❌ Error: Binary 'volt' not found in archive."
+  echo "Contents of archive:"
+  ls -R "$TMP_DIR"
   exit 1
 fi
 
