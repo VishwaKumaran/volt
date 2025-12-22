@@ -62,10 +62,21 @@ fi
 tar -xzf "$TMP_DIR/$FILE" -C "$TMP_DIR"
 
 # Install
-if [ -f "$TMP_DIR/volt" ]; then
-  mv "$TMP_DIR/volt" "$INSTALL_DIR/$BINARY_NAME"
+SHARE_DIR="$HOME/.local/share"
+APP_DIR="$SHARE_DIR/volt"
+mkdir -p "$SHARE_DIR"
+
+if [ -d "$TMP_DIR/volt" ]; then
+  echo "Installing to $APP_DIR..."
+  # Clean up previous install
+  rm -rf "$APP_DIR"
+  # Move the extracted directory
+  mv "$TMP_DIR/volt" "$APP_DIR"
+  
+  # Create symlink
+  ln -sf "$APP_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
 else
-  echo "❌ Error: Binary 'volt' not found in archive."
+  echo "❌ Error: App directory 'volt' not found in archive."
   echo "Contents of archive:"
   ls -R "$TMP_DIR"
   exit 1
