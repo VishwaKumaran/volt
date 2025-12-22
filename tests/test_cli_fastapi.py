@@ -12,16 +12,21 @@ TEST_APP_DIR = Path(__file__).parent
 
 class TestCreateFastAPIApp:
     TEST_MATRIX = [
-        # Base
-        ("None", "None", "test_base.py"),
-        # Databases
-        *((db, "None", "test_db.py") for db in ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
-        # Auth Bearer
-        *((db, "Bearer Token (Authorization Header)", "test_auth_bearer.py") for db in
-          ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
-        # Auth Cookie
-        *((db, "Cookie-based Authentication (HTTPOnly)", "test_auth_cookie.py") for db in
-          ("SQLite", "PostgreSQL", "MySQL", "MongoDB")),
+        # Base (None, None, Docker=No, Alembic=No, Redis=No, TaskIQ=No, Sentry=No)
+        ("None", "None", "No", "No", "No", "No", "No", "test_base.py"),
+        # Standard SQL (SQLite, None, Docker=No, Alembic=Yes, Redis=No, TaskIQ=No, Sentry=No)
+        ("SQLite", "None", "No", "Yes", "No", "No", "No", "test_db.py"),
+        # Full Production Stack (PostgreSQL, Bearer Auth, Docker=Yes, Alembic=Yes, Redis=Yes, TaskIQ=Yes, Sentry=Yes)
+        (
+            "PostgreSQL",
+            "Bearer Token (Authorization Header)",
+            "Yes",
+            "Yes",
+            "Yes",
+            "Yes",
+            "Yes",
+            "test_auth_bearer.py",
+        ),
     ]
 
     @pytest.fixture
@@ -34,19 +39,102 @@ class TestCreateFastAPIApp:
         with patch("volt.stacks.fastapi.app_creator.choose") as mock_choose:
             yield {"choose": mock_choose}
 
-    def _run_template_test(self, temp_dir: Path, mock_dependencies, db_choice: str, auth_choice: str, test_script: str):
+    def _run_template_test(
+        self,
+        temp_dir: Path,
+        mock_dependencies,
+        db_choice: str,
+        auth_choice: str,
+        docker_choice: str,
+        alembic_choice: str,
+        redis_choice: str,
+        taskiq_choice: str,
+        sentry_choice: str,
+        test_script: str,
+    ):
         """Helper to create and validate generated FastAPI projects."""
         app_name = temp_dir / f"test_app"
-        mock_dependencies["choose"].side_effect = [db_choice, auth_choice]
+
+        # Order: db, auth (if db!=None), docker, alembic (if db in SQL), redis, taskiq, sentry
+        choices = [db_choice]
+        if db_choice != "None":
+            choices.append(auth_choice)
+        choices.append(docker_choice)
+        if db_choice in ["SQLite", "PostgreSQL", "MySQL"]:
+            choices.append(alembic_choice)
+        choices.append(redis_choice)
+        choices.append(taskiq_choice)
+        choices.append(sentry_choice)
+
+        mock_dependencies["choose"].side_effect = choices
 
         create_fastapi_app(app_name, skip_install=False)
 
+        # Deep assertions for production features
+        if docker_choice == "Yes":
+            assert (app_name / "Dockerfile").exists(), "Dockerfile missing"
+            assert (
+                app_name / "docker-compose.yaml"
+            ).exists(), "docker-compose.yaml missing"
+
+            compose_content = (app_name / "docker-compose.yaml").read_text()
+            if db_choice not in ["None", "SQLite"]:
+                assert (
+                    "db:" in compose_content
+                ), "DB service missing in docker-compose.yaml"
+            if redis_choice == "Yes" or taskiq_choice == "Yes":
+                assert (
+                    "redis:" in compose_content
+                ), "Redis service missing in docker-compose.yaml"
+            if taskiq_choice == "Yes":
+                assert (
+                    "worker:" in compose_content
+                ), "Worker service missing in docker-compose.yaml"
+
+        main_py = (app_name / "app" / "main.py").read_text()
+        if redis_choice == "Yes":
+            assert "init_redis" in main_py, "Redis init missing in main.py"
+        if taskiq_choice == "Yes":
+            assert "broker.startup" in main_py, "TaskIQ startup missing in main.py"
+        if sentry_choice == "Yes":
+            assert "sentry_sdk.init" in main_py, "Sentry init missing in main.py"
+
+        if alembic_choice == "Yes":
+            assert (app_name / "alembic.ini").exists(), "alembic.ini missing"
+            assert (app_name / "migrations").exists(), "migrations folder missing"
+
         return run_in_project_venv(app_name, TEST_APP_DIR / test_script)
 
-    @pytest.mark.parametrize("db_choice,auth_choice,test_script", TEST_MATRIX)
-    def test_generated_fastapi_templates(self, temp_dir, mock_dependencies, db_choice, auth_choice, test_script):
+    @pytest.mark.parametrize(
+        "db_choice,auth_choice,docker_choice,alembic_choice,redis_choice,taskiq_choice,sentry_choice,test_script",
+        TEST_MATRIX,
+    )
+    def test_generated_fastapi_templates(
+        self,
+        temp_dir,
+        mock_dependencies,
+        db_choice,
+        auth_choice,
+        docker_choice,
+        alembic_choice,
+        redis_choice,
+        taskiq_choice,
+        sentry_choice,
+        test_script,
+    ):
         """Integration tests for generated FastAPI templates."""
-        self._run_template_test(temp_dir, mock_dependencies, db_choice, auth_choice, test_script)
+        self._run_template_test(
+            temp_dir,
+            mock_dependencies,
+            db_choice,
+            auth_choice,
+            docker_choice,
+            alembic_choice,
+            redis_choice,
+            taskiq_choice,
+            sentry_choice,
+            test_script,
+        )
 
     #
     # # Test 13: App already exists

@@ -2,6 +2,7 @@ from typer import Typer, Option, Context, Exit
 
 from volt.stacks.fastapi.cli import fastapi_app
 from volt.add_cli import add_app
+from volt.db_cli import db_app
 
 app = Typer(
     help="An extremely fast template and stack manager for Python projects.",
@@ -13,6 +14,12 @@ app.add_typer(
     add_app,
     name="add",
     help="Add features to an existing project.",
+    no_args_is_help=True,
+)
+app.add_typer(
+    db_app,
+    name="db",
+    help="Database migration management (Alembic).",
     no_args_is_help=True,
 )
 

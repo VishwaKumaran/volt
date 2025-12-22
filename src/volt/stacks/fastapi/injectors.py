@@ -76,7 +76,9 @@ def inject_lifespan(db_choice: str, main_file: Path):
 def register_model_in_init_beanie(db_file: Path, model_name: str):
     content = db_file.read_text()
 
-    import_stmt = f"from app.models.{model_name.lower()} import {model_name.capitalize()}"
+    import_stmt = (
+        f"from app.models.{model_name.lower()} import {model_name.capitalize()}"
+    )
 
     if import_stmt not in content:
         content = re.sub(
@@ -103,7 +105,11 @@ def register_model_in_init_beanie(db_file: Path, model_name: str):
     else:
         new_models = model_name
 
-    new_content = re.sub(pattern, f"await init_beanie(database=db, document_models=[{new_models}])", content)
+    new_content = re.sub(
+        pattern,
+        f"await init_beanie(database=db, document_models=[{new_models}])",
+        content,
+    )
     db_file.write_text(new_content)
 
 
@@ -114,10 +120,10 @@ def inject_healthcheck_route(main_file: Path, db_choice: str):
         return
 
     if db_choice == "MongoDB":
-        import_code = '''from fastapi import HTTPException
+        import_code = """from fastapi import HTTPException
 from app.core.config import settings
-import app.core.db as db'''
-        health_code = '''
+import app.core.db as db"""
+        health_code = """
 @app.get("/health", tags=["Health"])
 async def healthcheck():
     try:
@@ -127,14 +133,14 @@ async def healthcheck():
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
     return {"status": "ok", "database": "reachable"}
-'''
+"""
     else:
-        import_code = '''
+        import_code = """
         from sqlalchemy import text
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio.session import AsyncSession
-from app.core.db import get_session'''
-        health_code = '''
+from app.core.db import get_session"""
+        health_code = """
 @app.get("/health", tags=["Health"])
 async def healthcheck(session: AsyncSession = Depends(get_session)):
     try:
@@ -142,19 +148,27 @@ async def healthcheck(session: AsyncSession = Depends(get_session)):
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
     return {"status": "ok", "database": "reachable"}
-'''
+"""
 
     if import_code.strip() not in content:
         pattern_import = r"(?:(?:from|import)\s+[^\n]+\n)+"
         match = re.search(pattern_import, content)
         if match:
             insert_pos = match.end()
-            content = content[:insert_pos] + "\n" + import_code.strip() + "\n\n" + content[insert_pos:]
+            content = (
+                content[:insert_pos]
+                + "\n"
+                + import_code.strip()
+                + "\n\n"
+                + content[insert_pos:]
+            )
         else:
             content = import_code.strip() + "\n\n" + content
 
     pattern = r"app\.include_router\([^\n]+\)\n"
-    new_content = re.sub(pattern, lambda m: m.group(0) + "\n" + health_code.strip() + "\n", content)
+    new_content = re.sub(
+        pattern, lambda m: m.group(0) + "\n" + health_code.strip() + "\n", content
+    )
     main_file.write_text(new_content)
 
 
@@ -186,7 +200,9 @@ api_router.include_router(user_router)
 
 def inject_users_model(models_file: Path, db_choice: str):
     if db_choice == "MongoDB":
-        register_model_in_init_beanie(models_file.parent.parent / "core" / "db.py", "User")
+        register_model_in_init_beanie(
+            models_file.parent.parent / "core" / "db.py", "User"
+        )
         new_model_code = """from beanie import Document
 from pydantic import EmailStr
 
@@ -216,4 +232,115 @@ class User(SQLModel, table=True):
     else:
         raise ValueError(f"Unsupported database choice: {db_choice}")
 
-    models_file.write_text(new_model_code)
+
+def inject_redis(main_file: Path):
+    content = main_file.read_text()
+    if "init_redis" in content:
+        return
+
+    import_code = "from app.core.redis import init_redis, close_redis"
+    if import_code not in content:
+        # Add after other app imports
+        content = re.sub(
+            r"(from app\.core\.db import [^\n]+)", r"\1\n" + import_code, content
+        )
+
+    # Inject into lifespan
+    if "async def lifespan(app: FastAPI):" in content:
+        content = re.sub(r"(await init_db\(\))", r"\1\n    await init_redis()", content)
+        content = re.sub(
+            r"(await close_db\(\))", r"\1\n    await close_redis()", content
+        )
+    else:
+        # Create lifespan if not exists
+        lifespan_code = """
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_redis()
+    yield
+    await close_redis()
+"""
+        pattern = r"app\s*=\s*FastAPI\s*\(([^)]*)\)"
+        content = re.sub(
+            pattern,
+            f"{lifespan_code}\napp = FastAPI(\\1, lifespan=lifespan)",
+            content,
+        )
+
+
+def inject_taskiq(main_file: Path):
+    content = main_file.read_text()
+    if "broker.startup" in content:
+        return
+
+    import_code = "from app.core.tasks import broker"
+    if import_code not in content:
+        content = re.sub(
+            r"(from app\.core\.\w+ import [^\n]+)",
+            r"\1\n" + import_code,
+            content,
+            count=1,
+        )
+
+    # Inject into lifespan
+    if "async def lifespan(app: FastAPI):" in content:
+        content = re.sub(
+            r"(await init_redis\(\))", r"\1\n    await broker.startup()", content
+        )
+        # If no init_redis, try after init_db
+        if "await broker.startup()" not in content:
+            content = re.sub(
+                r"(await init_db\(\))", r"\1\n    await broker.startup()", content
+            )
+
+        content = re.sub(
+            r"(await close_redis\(\))", r"\1\n    await broker.shutdown()", content
+        )
+        if "await broker.shutdown()" not in content:
+            content = re.sub(
+                r"(await close_db\(\))", r"\1\n    await broker.shutdown()", content
+            )
+    else:
+        # Create lifespan if not exists (unlikely given previous steps but for robustness)
+        lifespan_code = """
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await broker.startup()
+    yield
+    await broker.shutdown()
+"""
+        pattern = r"app\s*=\s*FastAPI\s*\(([^)]*)\)"
+        content = re.sub(
+            pattern,
+            f"{lifespan_code}\napp = FastAPI(\\1, lifespan=lifespan)",
+            content,
+        )
+
+
+def inject_sentry(main_file: Path):
+    content = main_file.read_text()
+    if "sentry_sdk.init" in content:
+        return
+
+    import_code = """import sentry_sdk
+from app.core.config import settings"""
+
+    init_code = """
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        send_default_pii=True,
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+    )
+"""
+
+    if "import sentry_sdk" not in content:
+        content = import_code + "\n" + content
+
+    # Inject after app = FastAPI(...)
+    pattern = r"(app\s*=\s*FastAPI\s*\([^)]*\))"
+    content = re.sub(pattern, r"\1\n" + init_code, content)
+
+    main_file.write_text(content)

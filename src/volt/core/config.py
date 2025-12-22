@@ -3,10 +3,12 @@ import tomli_w
 from pathlib import Path
 from pydantic import BaseModel
 
+
 class VoltConfig(BaseModel):
     project_name: str
     stack: str
-    features: dict[str, str] = {}
+    features: dict[str, str | bool] = {}
+
 
 def load_config(path: Path) -> VoltConfig | None:
     if not path.exists():
@@ -17,6 +19,7 @@ def load_config(path: Path) -> VoltConfig | None:
         return VoltConfig(**data)
     except Exception:
         return None
+
 
 def save_config(config: VoltConfig, path: Path) -> None:
     with open(path, "wb") as f:

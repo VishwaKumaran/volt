@@ -53,12 +53,21 @@ AUTH_CONFIGS = {
 }
 
 
-def generate_db_block(db_choice: str, env_path: Path, env_example_path: Path, project_name: str) -> str:
+def generate_db_block(
+    db_choice: str,
+    env_path: Path,
+    env_example_path: Path,
+    project_name: str,
+    docker: bool = False,
+) -> str:
     if db_choice not in DB_CONFIGS:
         return "\n# No database configured"
 
     cfg = DB_CONFIGS[db_choice]
     vars_with_values: dict[str, str | None] = dict(cfg["vars"])
+
+    if docker and "DB_HOST" in vars_with_values:
+        vars_with_values["DB_HOST"] = "db"
 
     if db_choice in DB_USER_DEFAULT:
         vars_with_values["DB_USER"] = getpass.getuser()
@@ -80,16 +89,41 @@ def generate_db_block(db_choice: str, env_path: Path, env_example_path: Path, pr
     '''
 
 
-def generate_auth_block(auth_choice: str, env_path: Path, env_example_path: Path) -> str:
+def generate_auth_block(
+    auth_choice: str, env_path: Path, env_example_path: Path
+) -> str:
     if auth_choice in AUTH_CONFIGS:
         secret_key = secrets.token_hex(32)
 
         add_env_variables(env_path, {"SECRET_KEY": secret_key})
         add_env_variables(env_example_path, {"SECRET_KEY": None})
 
-        return '''
+        return """
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    '''
+    """
     return "\n# No authentication configured"
+
+
+def generate_redis_block(
+    env_path: Path, env_example_path: Path, docker: bool = False
+) -> str:
+    redis_host = "redis" if docker else "localhost"
+    redis_url = f"redis://{redis_host}:6379/0"
+
+    add_env_variables(env_path, {"REDIS_URL": redis_url})
+    add_env_variables(env_example_path, {"REDIS_URL": None})
+
+    return """
+    REDIS_URL: str
+"""
+
+
+def generate_sentry_block(env_path: Path, env_example_path: Path) -> str:
+    add_env_variables(env_path, {"SENTRY_DSN": ""})
+    add_env_variables(env_example_path, {"SENTRY_DSN": None})
+
+    return """
+    SENTRY_DSN: Optional[str] = None
+"""
