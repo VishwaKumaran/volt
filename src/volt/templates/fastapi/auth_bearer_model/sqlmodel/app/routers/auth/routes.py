@@ -8,16 +8,16 @@ from starlette import status
 
 from app.core.db import get_session
 from app.core.security import verify_password, create_access_token, get_password_hash
+from app.schemas.auth import Token, UserCreate
 from app.models.user import User
-from app.routers.auth.schema import Token, UserCreate
 
 router = APIRouter(tags=["Authentification"])
 
 
 @router.post("/login")
 async def login(
-        form: Annotated[OAuth2PasswordRequestForm, Depends()],
-        session: Annotated[AsyncSession, Depends(get_session)],
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(select(User).where(User.username == form.username))
     user = result.scalar_one_or_none()
@@ -35,8 +35,8 @@ async def login(
 
 @router.post("/register")
 async def register(
-        user: UserCreate,
-        session: Annotated[AsyncSession, Depends(get_session)],
+    user: UserCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(select(User).where(User.username == user.username))
     existing_user = result.first()
@@ -54,7 +54,9 @@ async def register(
         )
 
     hashed_password = get_password_hash(user.password)
-    session.add(User(username=user.username, email=user.email, hashed_password=hashed_password))
+    session.add(
+        User(username=user.username, email=user.email, hashed_password=hashed_password)
+    )
     await session.commit()
 
     token = create_access_token(data={"sub": user.username})

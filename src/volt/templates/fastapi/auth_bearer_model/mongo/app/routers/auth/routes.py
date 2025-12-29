@@ -2,7 +2,7 @@ from typing import Annotated
 
 from app.core.security import verify_password, create_access_token, get_password_hash
 from app.models.user import User
-from app.routers.auth.schema import Token, UserCreate
+from app.schemas.auth import Token, UserCreate
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
@@ -26,14 +26,21 @@ async def login(form: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 
 @router.post("/register")
-async def register(user: UserCreate, ):
+async def register(
+    user: UserCreate,
+):
     existing_user = await User.find_one(User.username == user.username)
     if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
 
     exists_email = await User.find_one(User.email == user.email)
     if exists_email:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+        )
 
     hashed_password = get_password_hash(user.password)
     await User.insert_one(

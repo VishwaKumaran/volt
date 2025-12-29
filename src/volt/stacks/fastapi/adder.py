@@ -1,6 +1,3 @@
-from volt.stacks.fastapi.dependencies import FASTAPI_DB_DEPS
-from volt.stacks.fastapi.dependencies import FASTAPI_AUTH_DEPS
-from volt.core.dependencies import install_uv_packages
 from pathlib import Path
 
 from rich import print
@@ -8,21 +5,26 @@ from rich import print
 from volt.core.config import load_config, save_config
 from volt.core.prompts import choose
 from volt.stacks.fastapi.helpers import setup_auth_templates, setup_db_templates
-from volt.stacks.fastapi.injectors import inject_lifespan, inject_healthcheck_route, inject_auth_routers, inject_users_model
 from volt.stacks.fastapi.dependencies import install_fastapi_dependencies
 
 
 def add_feature(feature_type: str):
     project_root = Path.cwd()
-    
-    # Verify we are in a valid project structure
-    if not (project_root / "app").exists() or not (project_root / "pyproject.toml").exists():
-        print("[red]Error: This does not look like a standard Volt FastAPI project (missing 'app' folder or 'pyproject.toml').[/red]")
+
+    if (
+        not (project_root / "app").exists()
+        or not (project_root / "pyproject.toml").exists()
+    ):
+        print(
+            "[red]Error: This does not look like a standard Volt FastAPI project (missing 'app' folder or 'pyproject.toml').[/red]"
+        )
         return
 
     config = load_config(project_root / "volt.toml")
     if not config:
-        print("[yellow]Warning: volt.toml not found. Feature detection might be less accurate.[/yellow]")
+        print(
+            "[yellow]Warning: volt.toml not found. Feature detection might be less accurate.[/yellow]"
+        )
 
     if feature_type == "database":
         add_database(project_root, config)
@@ -34,22 +36,21 @@ def add_feature(feature_type: str):
 
 def add_database(project_root: Path, config):
     print("[bold]Adding Database...[/bold]")
-    
+
     if config and config.features.get("database") != "None":
-        print(f"[yellow]Database already configured: {config.features['database']}[/yellow]")
-        # Optional: ask to overwrite or exit
-        # For now, let's proceed but warn
-    
+        print(
+            f"[yellow]Database already configured: {config.features['database']}[/yellow]"
+        )
+
     db_choice = choose(
         "Select a database to add:",
         choices=["SQLite", "PostgreSQL", "MySQL", "MongoDB"],
         default="SQLite",
     )
-    
+
     setup_db_templates(project_root, db_choice)
-    # 4. Install Dependencies
     install_fastapi_dependencies(project_root, db_choice, "None")
-    
+
     if config:
         config.features["database"] = db_choice
         save_config(config, project_root / "volt.toml")
@@ -59,17 +60,21 @@ def add_database(project_root: Path, config):
 
 def add_auth(project_root: Path, config):
     print("[bold]Adding Authentication...[/bold]")
-    
-    # 1. Check if DB exists (Auth needs DB)
-    # Check config first, then fallback to file check
+
     has_db = False
-    if config and config.features.get("database") and config.features["database"] != "None":
+    if (
+        config
+        and config.features.get("database")
+        and config.features["database"] != "None"
+    ):
         has_db = True
     elif (project_root / "app" / "core" / "db.py").exists():
         has_db = True
-        
+
     if not has_db:
-        print("[red]Error: Authentication requires a database. Please run 'volt add db' first.[/red]")
+        print(
+            "[red]Error: Authentication requires a database. Please run 'volt add db' first.[/red]"
+        )
         return
 
     auth_choice = choose(
@@ -80,26 +85,25 @@ def add_auth(project_root: Path, config):
         ],
         default="Bearer Token (Authorization Header)",
     )
-    
-    # We need to know the DB type to generate the correct User model
+
     db_choice = "None"
     if config and config.features.get("database"):
         db_choice = config.features["database"]
-    
+
     if db_choice == "None":
-        # Fallback to heuristic
         pyproject = (project_root / "pyproject.toml").read_text()
         if "beanie" in pyproject or "motor" in pyproject:
             db_choice = "MongoDB"
         elif "sqlmodel" in pyproject or "sqlalchemy" in pyproject:
-            db_choice = "PostgreSQL" # generic SQL
-        
+            db_choice = "PostgreSQL"  # generic SQL
+
     if db_choice == "None":
-        print("[red]Could not detect database type from dependencies. Cannot add auth safely.[/red]")
+        print(
+            "[red]Could not detect database type from dependencies. Cannot add auth safely.[/red]"
+        )
         return
 
     setup_auth_templates(project_root, auth_choice, db_choice)
-    # 6. Install Dependencies
     install_fastapi_dependencies(project_root, db_choice, auth_choice)
 
     if config:

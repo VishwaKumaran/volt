@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     __DB_BLOCK__
     __AUTH_BLOCK__
     __REDIS_BLOCK__
-    __SENTRY_BLOCK__
+    __OBSERVABILITY_BLOCK__
 
 
 settings = Settings()

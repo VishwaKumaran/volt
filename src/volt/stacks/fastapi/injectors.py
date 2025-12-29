@@ -6,6 +6,8 @@ from rich import print
 from volt.core.injectors import replace_pattern_in_file
 from volt.stacks.constants import DB_SQL_MODEL, DB_NOSQL_MODEL
 
+ASYNC_CONTEXT_IMPORT = "from contextlib import asynccontextmanager"
+
 
 def inject_lifespan_for_mongo(main_file: Path):
     content = main_file.read_text()
@@ -113,19 +115,53 @@ def register_model_in_init_beanie(db_file: Path, model_name: str):
     db_file.write_text(new_content)
 
 
-def inject_healthcheck_route(main_file: Path, db_choice: str):
-    content = main_file.read_text()
-    if '@app.get("/health"' in content:
-        print("[yellow]Healthcheck route already exists, skipping.[/yellow]")
+def setup_health_router(project_path: Path, db_choice: str):
+    routers_dir = project_path / "app" / "routers"
+    health_file = routers_dir / "health.py"
+    routers_main = routers_dir / "main.py"
+
+    if health_file.exists():
+        print("[yellow]Health router already exists, skipping creation.[/yellow]")
+    else:
+        health_code = """from fastapi import APIRouter
+
+router = APIRouter(prefix="/health", tags=["Health"])
+
+@router.get("")
+async def health_check():
+    return {"status": "ok"}
+"""
+        health_file.write_text(health_code)
+
+    main_content = routers_main.read_text()
+    if "from app.routers.health import router as health_router" not in main_content:
+        import_line = "from app.routers.health import router as health_router"
+        if "from fastapi import APIRouter" in main_content:
+            main_content = main_content.replace(
+                "from fastapi import APIRouter",
+                f"from fastapi import APIRouter\n{import_line}",
+            )
+        else:
+            main_content = f"{import_line}\n" + main_content
+
+        if "api_router.include_router(health_router)" not in main_content:
+            main_content = main_content.replace(
+                "api_router = APIRouter()",
+                "api_router = APIRouter()\napi_router.include_router(health_router)",
+            )
+        routers_main.write_text(main_content)
+
+    content = health_file.read_text()
+    if "async def database_health" in content:
         return
 
     if db_choice == "MongoDB":
-        import_code = """from fastapi import HTTPException
-from app.core.config import settings
-import app.core.db as db"""
-        health_code = """
-@app.get("/health", tags=["Health"])
-async def healthcheck():
+        db_health = """
+from fastapi import HTTPException
+import app.core.db as db
+
+@router.get("/db")
+async def database_health():
     try:
         if not db.client:
             raise Exception("Database not initialized")
@@ -134,68 +170,70 @@ async def healthcheck():
         raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
     return {"status": "ok", "database": "reachable"}
 """
-    else:
-        import_code = """
-        from sqlalchemy import text
+        health_file.write_text(content.strip() + "\n" + db_health)
+    elif db_choice in DB_SQL_MODEL:
+        db_health = """
 from fastapi import Depends, HTTPException
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio.session import AsyncSession
-from app.core.db import get_session"""
-        health_code = """
-@app.get("/health", tags=["Health"])
-async def healthcheck(session: AsyncSession = Depends(get_session)):
+from app.core.db import get_session
+
+@router.get("/db")
+async def database_health(session: AsyncSession = Depends(get_session)):
     try:
         await session.execute(text("SELECT 1"))
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Database not reachable: {e}")
     return {"status": "ok", "database": "reachable"}
 """
+        health_file.write_text(content.strip() + "\n" + db_health)
 
-    if import_code.strip() not in content:
-        pattern_import = r"(?:(?:from|import)\s+[^\n]+\n)+"
-        match = re.search(pattern_import, content)
-        if match:
-            insert_pos = match.end()
-            content = (
-                content[:insert_pos]
-                + "\n"
-                + import_code.strip()
-                + "\n\n"
-                + content[insert_pos:]
-            )
-        else:
-            content = import_code.strip() + "\n\n" + content
 
-    pattern = r"app\.include_router\([^\n]+\)\n"
-    new_content = re.sub(
-        pattern, lambda m: m.group(0) + "\n" + health_code.strip() + "\n", content
-    )
-    main_file.write_text(new_content)
+def inject_redis_healthcheck(project_path: Path):
+    health_file = project_path / "app" / "routers" / "health.py"
+    if not health_file.exists():
+        setup_health_router(project_path, "None")
+
+    content = health_file.read_text()
+    if "async def redis_health" in content:
+        return
+
+    redis_health = """
+from fastapi import Depends
+from app.core.redis import get_redis
+
+@router.get("/redis")
+async def redis_health(redis=Depends(get_redis)):
+    return {"status": await redis.ping()}
+"""
+    health_file.write_text(content.strip() + "\n" + redis_health)
 
 
 def inject_auth_routers(routers_file: Path):
-    new_router_code = """from fastapi import APIRouter
-
-from app.core.config import settings
-from app.routers.auth.router import router as auth_router
-from app.routers.users.router import router as user_router
-
-api_router = APIRouter()
+    new_router_code = """api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(user_router)
 """
 
     content = routers_file.read_text()
 
-    if "app.routers.auth.router" in content and "app.routers.users.router" in content:
+    if "app.routers.auth.routes" in content and "app.routers.users.routes" in content:
         print("[yellow]Routers already injected, skipping.[/yellow]")
         return
 
-    pattern = (
-        r"from fastapi import APIRouter\s+from app\.core\.config import settings\s+"
-        r"api_router = APIRouter\(\)"
-    )
+    pattern = r"api_router\s*=\s*APIRouter\(\)"
+    import_pattern = r"from fastapi import APIRouter"
+    if import_pattern not in content:
+        print("[yellow]APIRouter not found, skipping.[/yellow]")
+        return
+
+    import_code = """from fastapi import APIRouter
+from app.routers.auth.routes import router as auth_router
+from app.routers.users.routes import router as user_router
+"""
 
     replace_pattern_in_file(routers_file, pattern, new_router_code.strip())
+    replace_pattern_in_file(routers_file, import_pattern, import_code.strip())
 
 
 def inject_users_model(models_file: Path, db_choice: str):
@@ -232,6 +270,8 @@ class User(SQLModel, table=True):
     else:
         raise ValueError(f"Unsupported database choice: {db_choice}")
 
+    models_file.write_text(new_model_code)
+
 
 def inject_redis(main_file: Path):
     content = main_file.read_text()
@@ -239,20 +279,26 @@ def inject_redis(main_file: Path):
         return
 
     import_code = "from app.core.redis import init_redis, close_redis"
-    if import_code not in content:
-        # Add after other app imports
+    if ASYNC_CONTEXT_IMPORT not in content:
         content = re.sub(
-            r"(from app\.core\.db import [^\n]+)", r"\1\n" + import_code, content
+            r"(from fastapi import FastAPI[^\n]*)",
+            r"\1\n" + ASYNC_CONTEXT_IMPORT,
+            content,
         )
 
-    # Inject into lifespan
-    if "async def lifespan(app: FastAPI):" in content:
-        content = re.sub(r"(await init_db\(\))", r"\1\n    await init_redis()", content)
+    if import_code not in content:
         content = re.sub(
-            r"(await close_db\(\))", r"\1\n    await close_redis()", content
+            r"(from fastapi import FastAPI)", r"\1\n" + import_code, content
         )
+
+    if "async def lifespan(app: FastAPI):" in content:
+        content = re.sub(
+            r"(async def lifespan\(app: FastAPI\):)",
+            r"\1\n    await init_redis()",
+            content,
+        )
+        content = re.sub(r"(yield)", r"\1\n    await close_redis()", content)
     else:
-        # Create lifespan if not exists
         lifespan_code = """
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -267,54 +313,7 @@ async def lifespan(app: FastAPI):
             content,
         )
 
-
-def inject_taskiq(main_file: Path):
-    content = main_file.read_text()
-    if "broker.startup" in content:
-        return
-
-    import_code = "from app.core.tasks import broker"
-    if import_code not in content:
-        content = re.sub(
-            r"(from app\.core\.\w+ import [^\n]+)",
-            r"\1\n" + import_code,
-            content,
-            count=1,
-        )
-
-    # Inject into lifespan
-    if "async def lifespan(app: FastAPI):" in content:
-        content = re.sub(
-            r"(await init_redis\(\))", r"\1\n    await broker.startup()", content
-        )
-        # If no init_redis, try after init_db
-        if "await broker.startup()" not in content:
-            content = re.sub(
-                r"(await init_db\(\))", r"\1\n    await broker.startup()", content
-            )
-
-        content = re.sub(
-            r"(await close_redis\(\))", r"\1\n    await broker.shutdown()", content
-        )
-        if "await broker.shutdown()" not in content:
-            content = re.sub(
-                r"(await close_db\(\))", r"\1\n    await broker.shutdown()", content
-            )
-    else:
-        # Create lifespan if not exists (unlikely given previous steps but for robustness)
-        lifespan_code = """
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await broker.startup()
-    yield
-    await broker.shutdown()
-"""
-        pattern = r"app\s*=\s*FastAPI\s*\(([^)]*)\)"
-        content = re.sub(
-            pattern,
-            f"{lifespan_code}\napp = FastAPI(\\1, lifespan=lifespan)",
-            content,
-        )
+    main_file.write_text(content)
 
 
 def inject_sentry(main_file: Path):
@@ -339,7 +338,29 @@ if settings.SENTRY_DSN:
     if "import sentry_sdk" not in content:
         content = import_code + "\n" + content
 
-    # Inject after app = FastAPI(...)
+    pattern = r"(app\s*=\s*FastAPI\s*\([^)]*\))"
+    content = re.sub(pattern, r"\1\n" + init_code, content)
+
+    main_file.write_text(content)
+
+
+def inject_logfire(main_file: Path):
+    content = main_file.read_text()
+    if "logfire.instrument_fastapi" in content:
+        return
+
+    import_code = """import logfire
+from app.core.config import settings"""
+
+    init_code = """
+if settings.LOGFIRE_TOKEN:
+    logfire.configure(token=settings.LOGFIRE_TOKEN)
+    logfire.instrument_fastapi(app)
+"""
+
+    if "import logfire" not in content:
+        content = import_code + "\n" + content
+
     pattern = r"(app\s*=\s*FastAPI\s*\([^)]*\))"
     content = re.sub(pattern, r"\1\n" + init_code, content)
 

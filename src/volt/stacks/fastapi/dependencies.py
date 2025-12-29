@@ -4,8 +4,8 @@ from volt.core.dependencies import install_uv_packages, init_uv_project
 
 STACK_DEPS = ["fastapi", "uvicorn", "pydantic-settings"]
 REDIS_DEPS = ["redis"]
-TASKIQ_DEPS = ["taskiq", "taskiq-redis"]
 SENTRY_DEPS = ["sentry-sdk[fastapi]"]
+LOGFIRE_DEPS = ["logfire[fastapi]"]
 
 FASTAPI_DB_DEPS = {
     "sqlite": ["sqlmodel", "aiosqlite", "greenlet", "alembic"],
@@ -35,8 +35,7 @@ def install_fastapi_dependencies(
     db_choice: str,
     auth_choice: str,
     redis_choice: bool = False,
-    taskiq_choice: bool = False,
-    sentry_choice: bool = False,
+    observability_choice: str = "None",
 ):
     init_uv_project(dest)
 
@@ -45,11 +44,10 @@ def install_fastapi_dependencies(
     if redis_choice:
         install_uv_packages(REDIS_DEPS, dest)
 
-    if taskiq_choice:
-        install_uv_packages(TASKIQ_DEPS, dest)
-
-    if sentry_choice:
+    if observability_choice == "Sentry":
         install_uv_packages(SENTRY_DEPS, dest)
+    elif observability_choice == "Logfire":
+        install_uv_packages(LOGFIRE_DEPS, dest)
 
     db_key = db_choice.lower()
     if db_choice != "None" and db_key in FASTAPI_DB_DEPS:

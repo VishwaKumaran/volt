@@ -58,16 +58,12 @@ def generate_db_block(
     env_path: Path,
     env_example_path: Path,
     project_name: str,
-    docker: bool = False,
 ) -> str:
     if db_choice not in DB_CONFIGS:
         return "\n# No database configured"
 
     cfg = DB_CONFIGS[db_choice]
     vars_with_values: dict[str, str | None] = dict(cfg["vars"])
-
-    if docker and "DB_HOST" in vars_with_values:
-        vars_with_values["DB_HOST"] = "db"
 
     if db_choice in DB_USER_DEFAULT:
         vars_with_values["DB_USER"] = getpass.getuser()
@@ -82,9 +78,13 @@ def generate_db_block(
     uri_expr = cfg.get("uri_no_auth") if db_choice == "MongoDB" else cfg["uri"]
     return f'''
     {"".join(f"{k}: {type(v).__name__ if v is not None else 'str'}\n    " for k, v in vars_with_values.items())}
+    DATABASE_URL: Optional[str] = None
+
     @computed_field
     @property
     def DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"{uri_expr}"
     '''
 
@@ -106,11 +106,8 @@ def generate_auth_block(
     return "\n# No authentication configured"
 
 
-def generate_redis_block(
-    env_path: Path, env_example_path: Path, docker: bool = False
-) -> str:
-    redis_host = "redis" if docker else "localhost"
-    redis_url = f"redis://{redis_host}:6379/0"
+def generate_redis_block(env_path: Path, env_example_path: Path) -> str:
+    redis_url = "redis://redis:6379/0"
 
     add_env_variables(env_path, {"REDIS_URL": redis_url})
     add_env_variables(env_example_path, {"REDIS_URL": None})
@@ -127,3 +124,22 @@ def generate_sentry_block(env_path: Path, env_example_path: Path) -> str:
     return """
     SENTRY_DSN: Optional[str] = None
 """
+
+
+def generate_logfire_block(env_path: Path, env_example_path: Path) -> str:
+    add_env_variables(env_path, {"LOGFIRE_TOKEN": ""})
+    add_env_variables(env_example_path, {"LOGFIRE_TOKEN": None})
+
+    return """
+    LOGFIRE_TOKEN: Optional[str] = None
+"""
+
+
+def generate_observability_block(
+    choice: str, env_path: Path, env_example_path: Path
+) -> str:
+    if choice == "Sentry":
+        return generate_sentry_block(env_path, env_example_path)
+    elif choice == "Logfire":
+        return generate_logfire_block(env_path, env_example_path)
+    return "\n# No external observability configured"

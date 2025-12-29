@@ -13,25 +13,21 @@ def prepare_fastapi_template(
     project_name: str,
     db_choice: str,
     auth_choice: str,
-    docker: bool = False,
     redis_choice: bool = False,
-    taskiq_choice: bool = False,
-    sentry_choice: bool = False,
+    observability_choice: str = "None",
 ) -> None:
-    from .config_blocks import generate_redis_block, generate_sentry_block
+    from .config_blocks import generate_redis_block, generate_observability_block
 
     env_path = dest / ".env"
     env_example_path = dest / ".env.example"
 
-    db_block = generate_db_block(
-        db_choice, env_path, env_example_path, project_name, docker
-    )
+    db_block = generate_db_block(db_choice, env_path, env_example_path, project_name)
     auth_block = generate_auth_block(auth_choice, env_path, env_example_path)
     redis_block = (
-        generate_redis_block(env_path, env_example_path, docker) if redis_choice else ""
+        generate_redis_block(env_path, env_example_path) if redis_choice else ""
     )
-    sentry_block = (
-        generate_sentry_block(env_path, env_example_path) if sentry_choice else ""
+    observability_block = generate_observability_block(
+        observability_choice, env_path, env_example_path
     )
 
     config_path = dest / "app" / "core" / "config.py"
@@ -42,7 +38,7 @@ def prepare_fastapi_template(
             "DB_BLOCK": db_block,
             "AUTH_BLOCK": auth_block,
             "REDIS_BLOCK": redis_block,
-            "SENTRY_BLOCK": sentry_block,
+            "OBSERVABILITY_BLOCK": observability_block,
         },
     )
 
