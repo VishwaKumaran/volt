@@ -24,7 +24,7 @@ def create_fastapi(
 def generate_fastapi_crud(
     model: str = Argument(..., help="Name of the model to generate CRUD for.")
 ):
-    from volt.stacks.fastapi.scaffold import generate_crud
+    from volt.stacks.fastapi.scaffold import generate_crud, collect_fields
     from volt.core.config import load_config
     from rich import print
 
@@ -33,18 +33,17 @@ def generate_fastapi_crud(
         print("[red]Error: Not a Volt project (volt.toml not found).[/red]")
         return
 
-    if config.features.get("database") == "None":
-        print("[red]Error: Database feature is not enabled.[/red]")
-        return
-
     if config.stack != "fastapi":
         print(
             f"[red]Error: This command is only for FastAPI stack (current: {config.stack}).[/red]"
         )
         return
 
-    generate_crud(Path.cwd(), model)
-    print(f"\n[bold green]✔ CRUD for {model} generated successfully![/bold green]")
+    # Collect fields interactively
+    fields = collect_fields()
+
+    generate_crud(Path.cwd(), model, fields)
+    print(f"\n[bold green]✔ CRUD for {model} generated successfully![bold green]")
     print(
         "[dim]Next Step: If using Alembic, run 'volt db revision --autogenerate' to create a migration.[/dim]"
     )

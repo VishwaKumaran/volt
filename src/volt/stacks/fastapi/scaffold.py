@@ -1,16 +1,84 @@
 import shutil
 from pathlib import Path
+from typing import List, Dict, Optional
+from rich.console import Console
+from rich.table import Table
 from rich import print
 from typer import Exit
+import questionary
+
 from volt.core.template import (
     TEMPLATES_ROOT,
     inject_variables_in_file,
     format_with_black,
 )
 
+console = Console()
 
-def generate_crud(app_path: Path, model_name: str) -> None:
-    """Generate CRUD boilerplate for a given model."""
+
+def collect_fields() -> List[Dict[str, str]]:
+    """Interactively collect table columns from the user."""
+    fields = []
+
+    print("\n[bold cyan]Define your Model fields[/bold cyan]")
+    print("[dim]The 'id' field is added automatically.[/dim]\n")
+
+    while True:
+        table = Table(
+            title="Current Fields", show_header=True, header_style="bold magenta"
+        )
+        table.add_column("Name", style="cyan")
+        table.add_column("Type", style="green")
+        table.add_column("Required", style="yellow")
+
+        for f in fields:
+            table.add_row(f["name"], f["type"], f["required"])
+
+        console.print(table)
+
+        action = questionary.select(
+            "What would you like to do?",
+            choices=[
+                "Add a new field",
+                "Remove a field",
+                "Confirm and Generate",
+                "Cancel",
+            ],
+        ).ask()
+
+        if action == "Add a new field":
+            name = questionary.text("Field name:").ask()
+            if not name:
+                continue
+            type_choice = questionary.select(
+                "Field type:",
+                choices=["str", "int", "float", "bool", "datetime", "date"],
+            ).ask()
+            required = questionary.select(
+                "Is it required?", choices=["Yes", "No"]
+            ).ask()
+            fields.append({"name": name, "type": type_choice, "required": required})
+
+        elif action == "Remove a field":
+            if len(fields) <= 1:
+                print("[yellow]Cannot remove all fields.[/yellow]")
+                continue
+            field_to_remove = questionary.select(
+                "Select field to remove:", choices=[f["name"] for f in fields]
+            ).ask()
+            fields = [f for f in fields if f["name"] != field_to_remove]
+
+        elif action == "Confirm and Generate":
+            return fields
+
+        elif action == "Cancel":
+            raise Exit()
+
+
+def generate_crud(
+    app_path: Path, model_name: str, fields: List[Dict[str, str]]
+) -> None:
+    """Generate CRUD boilerplate for a given model with custom fields."""
     model_lower = model_name.lower()
 
     # Simple pluralization (can be improved)
@@ -19,10 +87,31 @@ def generate_crud(app_path: Path, model_name: str) -> None:
     else:
         model_plural = model_lower + "s"
 
+    model_fields_code = ""
+    schema_base_fields = ""
+    schema_update_fields = ""
+
+    for field in fields:
+        name = field["name"]
+        ptype = field["type"]
+        is_required = field["required"] == "Yes"
+
+        if is_required:
+            model_fields_code += f"    {name}: {ptype}\n"
+            schema_base_fields += f"    {name}: {ptype}\n"
+        else:
+            model_fields_code += f"    {name}: Optional[{ptype}] = None\n"
+            schema_base_fields += f"    {name}: Optional[{ptype}] = None\n"
+
+        schema_update_fields += f"    {name}: Optional[{ptype}] = None\n"
+
     variables = {
         "MODEL_NAME": model_name.capitalize(),
         "MODEL_NAME_LOWER": model_lower,
         "MODEL_NAME_PLURAL": model_plural,
+        "MODEL_FIELDS": model_fields_code.strip(),
+        "SCHEMA_BASE_FIELDS": schema_base_fields.strip(),
+        "SCHEMA_UPDATE_FIELDS": schema_update_fields.strip(),
     }
 
     scaffold_root = TEMPLATES_ROOT / "fastapi" / "scaffold" / "app"
@@ -80,7 +169,6 @@ def generate_crud(app_path: Path, model_name: str) -> None:
         print(f"[green]✔ Created {dest.relative_to(app_path)}[/green]")
 
     register_router(app_path, model_name, model_plural)
-
     format_with_black(app_path)
 
 
@@ -101,7 +189,6 @@ def register_router(app_path: Path, model_name: str, model_plural: str) -> None:
 
     # Add import if not present
     if import_line not in content:
-        # Insert after other imports
         lines = content.splitlines()
         last_import_idx = 0
         for i, line in enumerate(lines):

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from app.core.db import get_session
 from app.services.__MODEL_NAME_LOWER__ import __MODEL_NAME_LOWER__Service as service
-from .schemas import (
+from app.schemas.__MODEL_NAME_LOWER__ import (
     __MODEL_NAME__Create,
     __MODEL_NAME__Read,
     __MODEL_NAME__Update,

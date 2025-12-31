@@ -13,6 +13,7 @@ wheels/
 .cadence/
 .idea/
 .agent/
+.vscode/
 
 
 .DS_Store
