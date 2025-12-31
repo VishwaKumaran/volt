@@ -26,9 +26,7 @@ MYSQL_DOCKER = """
 """
 
 MONGODB_DOCKER = """
-    image: mongo:7.0
-    environment:
-      - MONGO_INITDB_DATABASE=app
+    image: mongo:latest
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
