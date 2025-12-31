@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict
 from rich.console import Console
 from rich.table import Table
 from rich import print
@@ -184,10 +184,9 @@ def register_router(app_path: Path, model_name: str, model_plural: str) -> None:
     model_lower = model_name.lower()
     content = main_router_path.read_text()
 
-    import_line = f"from app.routers import {model_lower}\n"
-    registration_line = f'api_router.include_router({model_lower}.router, prefix="/{model_plural}", tags=["{model_plural}"])\n'
+    import_line = f"from app.routers.{model_plural}.routes import router as {model_lower}_router\n"
+    registration_line = f'api_router.include_router({model_lower}_router, prefix="/{model_plural}", tags=["{model_plural}"])\n'
 
-    # Add import if not present
     if import_line not in content:
         lines = content.splitlines()
         last_import_idx = 0
@@ -197,7 +196,6 @@ def register_router(app_path: Path, model_name: str, model_plural: str) -> None:
         lines.insert(last_import_idx + 1, import_line.strip())
         content = "\n".join(lines) + "\n"
 
-    # Add registration if not present
     if registration_line not in content:
         content += registration_line
 

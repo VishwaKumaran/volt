@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 from app.core.db import get_session
-from app.services.__MODEL_NAME_LOWER__ import __MODEL_NAME_LOWER__Service as service
+from app.services.__MODEL_NAME_LOWER__ import __MODEL_NAME__Service as service
 from app.schemas.__MODEL_NAME_LOWER__ import (
     __MODEL_NAME__Create,
     __MODEL_NAME__Read,
@@ -33,7 +33,9 @@ async def read___MODEL_NAME_LOWER__(
 async def read_multi___MODEL_NAME_PLURAL__(
     *, session: Session = Depends(get_session), skip: int = 0, limit: int = 100
 ):
-    return service.get_multi___MODEL_NAME_PLURAL__(session=session, skip=skip, limit=limit)
+    return service.get_multi___MODEL_NAME_PLURAL__(
+        session=session, skip=skip, limit=limit
+    )
 
 
 @router.patch("/{id}", response_model=__MODEL_NAME__Read)
