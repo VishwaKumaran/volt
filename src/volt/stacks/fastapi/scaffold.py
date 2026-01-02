@@ -6,6 +6,10 @@ from rich.table import Table
 from rich import print
 from typer import Exit
 import questionary
+import re
+from volt.core.config import VoltConfig
+from volt.stacks.constants import get_db_path, DB_MONGO_MODEL
+from volt.stacks.fastapi.injectors import register_model_in_init_beanie
 
 from volt.core.template import (
     TEMPLATES_ROOT,
@@ -76,7 +80,10 @@ def collect_fields() -> List[Dict[str, str]]:
 
 
 def generate_crud(
-    app_path: Path, model_name: str, fields: List[Dict[str, str]]
+    app_path: Path,
+    model_name: str,
+    fields: List[Dict[str, str]],
+    volt_config: VoltConfig,
 ) -> None:
     """Generate CRUD boilerplate for a given model with custom fields."""
     model_lower = model_name.lower()
@@ -114,9 +121,10 @@ def generate_crud(
         "SCHEMA_UPDATE_FIELDS": schema_update_fields.strip(),
     }
 
-    scaffold_root = TEMPLATES_ROOT / "fastapi" / "scaffold" / "app"
+    db_path = get_db_path(volt_config.features.get("database"))
 
-    # Map of template files to destination files
+    scaffold_root = TEMPLATES_ROOT / "fastapi" / "scaffold" / db_path / "app"
+
     files_to_generate = {
         scaffold_root
         / "models"
@@ -156,10 +164,30 @@ def generate_crud(
         / "routers"
         / model_plural
         / "__init__.py",
+        scaffold_root
+        / "dependencies"
+        / "dependence.py": app_path
+        / "app"
+        / "dependencies"
+        / f"{model_lower}.py",
+        scaffold_root
+        / "repositories"
+        / "base.py": app_path
+        / "app"
+        / "repositories"
+        / "base.py",
+        scaffold_root
+        / "services"
+        / "base.py": app_path
+        / "app"
+        / "services"
+        / "base.py",
     }
 
     for src, dest in files_to_generate.items():
-        if dest.exists():
+        if dest.exists() and dest.stem == "base":
+            continue
+        elif dest.exists():
             print(f"{dest} already exists")
             raise Exit(1)
 
@@ -169,6 +197,12 @@ def generate_crud(
         print(f"[green]✔ Created {dest.relative_to(app_path)}[/green]")
 
     register_router(app_path, model_name, model_plural)
+    register_exception(app_path)
+    if volt_config.features.get("auth"):
+        register_auth(app_path, model_name, model_plural)
+    if volt_config.features.get("database") == DB_MONGO_MODEL:
+        register_model_in_init_beanie(app_path, model_name.capitalize())
+
     format_with_black(app_path)
 
 
@@ -202,4 +236,58 @@ def register_router(app_path: Path, model_name: str, model_plural: str) -> None:
     main_router_path.write_text(content)
     print(
         f"[green]✔ Registered router in {main_router_path.relative_to(app_path)}[/green]"
+    )
+
+
+def register_auth(app_path: Path, model_name: str, model_plural: str) -> None:
+    """Inject router registration into app/routers/main.py."""
+    router_path = app_path / "app" / "routers" / model_plural / "routes.py"
+
+    content = router_path.read_text()
+    content = re.sub(
+        r"router\s*=\s*APIRouter\s*\((.*?)\)",
+        r"router = APIRouter(dependencies=[Depends(get_current_active_user)])",
+        content,
+    )
+    router_path.write_text(
+        "from app.dependencies.auth import get_current_active_user\n" + content
+    )
+
+
+def register_exception(app_path: Path) -> None:
+    """Inject exception registration into app/core/exception.py."""
+    exception_path = app_path / "app" / "core" / "exception.py"
+    if not exception_path.exists():
+        exception_path.write_text("")
+
+    content = exception_path.read_text()
+    content += """
+class NotFoundError(Exception):
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+        super().__init__(f"{model_name} not found")
+
+EXCEPTION_MAP = {
+    NotFoundError: 404,
+}
+    """
+    exception_path.write_text(content)
+
+    main_file = app_path / "app" / "main.py"
+    if not main_file.exists():
+        main_file.write_text("")
+
+    content = main_file.read_text()
+    content += """
+from app.core.exception import EXCEPTION_MAP
+from fastapi import HTTPException
+
+for exc_class, status_code in EXCEPTION_MAP.items():
+    @app.exception_handler(exc_class)
+    async def generic_handler(request, exc, status_code=status_code):
+        return HTTPException(status_code=status_code, detail=str(exc))
+    """
+    main_file.write_text(content)
+    print(
+        f"[green]✔ Registered exception in {exception_path.relative_to(app_path)}[/green]"
     )

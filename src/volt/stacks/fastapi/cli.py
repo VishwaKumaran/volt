@@ -42,7 +42,7 @@ def generate_fastapi_crud(
     # Collect fields interactively
     fields = collect_fields()
 
-    generate_crud(Path.cwd(), model, fields)
+    generate_crud(Path.cwd(), model, fields, config)
     print(f"\n[bold green]✔ CRUD for {model} generated successfully![bold green]")
     print(
         "[dim]Next Step: If using Alembic, run 'volt db revision --autogenerate' to create a migration.[/dim]"

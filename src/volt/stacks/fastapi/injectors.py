@@ -75,7 +75,8 @@ def inject_lifespan(db_choice: str, main_file: Path):
         raise ValueError(f"Unsupported database choice: {db_choice}")
 
 
-def register_model_in_init_beanie(db_file: Path, model_name: str):
+def register_model_in_init_beanie(root: Path, model_name: str):
+    db_file = root / "app" / "core" / "db.py"
     content = db_file.read_text()
 
     import_stmt = (
@@ -238,9 +239,7 @@ from app.routers.users.routes import router as user_router
 
 def inject_users_model(models_file: Path, db_choice: str):
     if db_choice == "MongoDB":
-        register_model_in_init_beanie(
-            models_file.parent.parent / "core" / "db.py", "User"
-        )
+        register_model_in_init_beanie(models_file.parent.parent.parent, "User")
         new_model_code = """from beanie import Document
 from pydantic import EmailStr
 
