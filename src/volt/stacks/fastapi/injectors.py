@@ -364,3 +364,80 @@ if settings.LOGFIRE_TOKEN:
     content = re.sub(pattern, r"\1\n" + init_code, content)
 
     main_file.write_text(content)
+
+
+def setup_exception_infrastructure(app_path: Path):
+    """Ensures exceptions.py exists and is registered in main.py."""
+    from volt.core.template import TEMPLATES_ROOT
+    import shutil
+
+    exception_path = app_path / "app" / "core" / "exceptions.py"
+    main_file = app_path / "app" / "main.py"
+
+    # 1. Ensure app/core/exceptions.py exists
+    if not exception_path.exists():
+        exception_path.parent.mkdir(parents=True, exist_ok=True)
+
+        template_path = (
+            TEMPLATES_ROOT / "fastapi" / "base" / "app" / "core" / "exceptions.py"
+        )
+        shutil.copy(template_path, exception_path)
+
+    # 2. Ensure app/main.py calls setup_exception_handlers
+    if main_file.exists():
+        content = main_file.read_text()
+        import_line = "from app.core.exceptions import setup_exception_handlers"
+        setup_call = "setup_exception_handlers(app)"
+
+        if import_line not in content:
+            lines = content.splitlines()
+            last_import_idx = 0
+            for i, line in enumerate(lines):
+                if line.startswith("from ") or line.startswith("import "):
+                    last_import_idx = i
+            lines.insert(last_import_idx + 1, import_line)
+            content = "\n".join(lines) + "\n"
+
+        if setup_call not in content:
+            content = re.sub(
+                r"(app\s*=\s*FastAPI\(.*?\))",
+                r"\1\n\n" + setup_call,
+                content,
+                flags=re.DOTALL,
+            )
+        main_file.write_text(content)
+
+
+def add_exception_to_map(
+    app_path: Path,
+    exception_class_name: str,
+    status_code: int,
+    exception_definition: str = None,
+):
+    """Adds an exception class and its mapping to app/core/exceptions.py."""
+    exception_path = app_path / "app" / "core" / "exceptions.py"
+    if not exception_path.exists():
+        setup_exception_infrastructure(app_path)
+
+    content = exception_path.read_text()
+
+    # Add class definition if provided and not present
+    if exception_definition and exception_class_name not in content:
+        # Find the line before EXCEPTION_MAP
+        content = re.sub(
+            r"EXCEPTION_MAP\s*=\s*{",
+            f"{exception_definition}\n\nEXCEPTION_MAP = {{",
+            content,
+        )
+
+    # Add to EXCEPTION_MAP if not present
+    mapping_entry = f"{exception_class_name}: {status_code},"
+    if mapping_entry not in content:
+        content = re.sub(
+            r"EXCEPTION_MAP\s*=\s*{([^}]*)}",
+            f"EXCEPTION_MAP = {{\\1    {mapping_entry}\n}}",
+            content,
+            flags=re.DOTALL,
+        )
+
+    exception_path.write_text(content)

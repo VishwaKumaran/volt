@@ -26,16 +26,9 @@ class __MODEL_NAME__Service(BaseService[__MODEL_NAME__]):
     async def update(
         self, session: AsyncSession, id: int, obj_in: __MODEL_NAME__Update
     ) -> __MODEL_NAME__ | None:
-        db_obj = await self.repo.get(session, id)
-        if not db_obj:
-            return None
-
-        for field, value in obj_in.model_dump(exclude_unset=True).items():
-            setattr(db_obj, field, value)
-
-        await session.commit()
-        await session.refresh(db_obj)
-        return db_obj
+        return await self.repo.update(
+            session, id, obj_in.model_dump(exclude_unset=True)
+        )
 
     async def delete(self, session: AsyncSession, id: int) -> __MODEL_NAME__ | None:
         return await self.repo.delete(session, id)

@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Sequence
+from typing import Any, Generic, Mapping, TypeVar, Sequence
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -17,11 +17,26 @@ class BaseRepository(Generic[T]):
         skip: int = 0,
         limit: int = 100,
     ) -> Sequence[T]:
-        result = await session.exec(select(self.model).offset(skip).limit(limit))
-        return result.all()
+        result = await session.execute(select(self.model).offset(skip).limit(limit))
+        return result.scalars().all()
 
     async def create(self, session: AsyncSession, obj: T) -> T:
-        session.add(obj)
+        db_obj = self.model.model_validate(obj)
+        session.add(db_obj)
+        await session.commit()
+        await session.refresh(db_obj)
+        return db_obj
+
+    async def update(
+        self, session: AsyncSession, id: int, obj_in: Mapping[str, Any]
+    ) -> T:
+        obj = await self.get(session, id)
+        if not obj:
+            return None
+
+        for field, value in obj_in.items():
+            setattr(obj, field, value)
+
         await session.commit()
         await session.refresh(obj)
         return obj

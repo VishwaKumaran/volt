@@ -24,11 +24,7 @@ class __MODEL_NAME__Service(BaseService[__MODEL_NAME__]):
     async def update(
         self, id: int, obj_in: __MODEL_NAME__Update
     ) -> __MODEL_NAME__ | None:
-        db_obj = await self.repo.get(id)
-        if not db_obj:
-            return None
-
-        return await self.repo.update(db_obj, obj_in)
+        return await self.repo.update(id, obj_in)
 
     async def delete(self, id: int) -> __MODEL_NAME__ | None:
         return await self.repo.delete(id)

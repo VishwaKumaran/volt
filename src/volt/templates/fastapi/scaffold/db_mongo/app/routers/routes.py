@@ -37,11 +37,11 @@ async def read_multi___MODEL_NAME_PLURAL__(
 async def update___MODEL_NAME_LOWER__(
     *, id: int, obj_in: __MODEL_NAME__Update, service: serviceDep
 ):
-    db_obj = await service.get(id=id)
-    return service.update(db_obj=service.ensure_exists(db_obj), obj_in=obj_in)
+    obj = await service.update(id=id, obj_in=obj_in)
+    return service.ensure_exists(obj)
 
 
 @router.delete("/{id}", response_model=__MODEL_NAME__Read)
 async def delete___MODEL_NAME_LOWER__(*, id: int, service: serviceDep):
-    db_obj = await service.get(id=id)
-    return service.delete(db_obj=service.ensure_exists(db_obj))
+    obj = await service.delete(id=id)
+    return service.ensure_exists(obj)

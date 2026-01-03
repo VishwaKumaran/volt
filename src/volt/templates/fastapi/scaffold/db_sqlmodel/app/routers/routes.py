@@ -19,7 +19,7 @@ router = APIRouter()
 async def create___MODEL_NAME_LOWER__(
     *, obj_in: __MODEL_NAME__Create, session: sessionDep, service: serviceDep
 ):
-    return service.create(session=session, obj_in=obj_in)
+    return await service.create(session=session, obj_in=obj_in)
 
 
 @router.get("/{id}", response_model=__MODEL_NAME__Read)
@@ -42,15 +42,13 @@ async def read_multi___MODEL_NAME_PLURAL__(
 async def update___MODEL_NAME_LOWER__(
     *, id: int, obj_in: __MODEL_NAME__Update, session: sessionDep, service: serviceDep
 ):
-    db_obj = await service.get(session=session, id=id)
-    return service.update(
-        session=session, db_obj=service.ensure_exists(db_obj), obj_in=obj_in
-    )
+    obj = await service.update(session=session, id=id, obj_in=obj_in)
+    return service.ensure_exists(obj)
 
 
 @router.delete("/{id}", response_model=__MODEL_NAME__Read)
 async def delete___MODEL_NAME_LOWER__(
     *, id: int, session: sessionDep, service: serviceDep
 ):
-    db_obj = await service.get(session=session, id=id)
-    return service.delete(session=session, db_obj=service.ensure_exists(db_obj))
+    obj = await service.delete(session=session, id=id)
+    return service.ensure_exists(obj)

@@ -9,7 +9,11 @@ import questionary
 import re
 from volt.core.config import VoltConfig
 from volt.stacks.constants import get_db_path, DB_MONGO_MODEL
-from volt.stacks.fastapi.injectors import register_model_in_init_beanie
+from volt.stacks.fastapi.injectors import (
+    register_model_in_init_beanie,
+    setup_exception_infrastructure,
+    add_exception_to_map,
+)
 
 from volt.core.template import (
     TEMPLATES_ROOT,
@@ -117,8 +121,12 @@ def generate_crud(
         "MODEL_NAME_LOWER": model_lower,
         "MODEL_NAME_PLURAL": model_plural,
         "MODEL_FIELDS": model_fields_code.strip(),
-        "SCHEMA_BASE_FIELDS": schema_base_fields.strip(),
-        "SCHEMA_UPDATE_FIELDS": schema_update_fields.strip(),
+        "SCHEMA_BASE_FIELDS": (
+            schema_base_fields.strip() if schema_base_fields else "    pass"
+        ),
+        "SCHEMA_UPDATE_FIELDS": (
+            schema_update_fields.strip() if schema_update_fields else "    pass"
+        ),
     }
 
     db_path = get_db_path(volt_config.features.get("database"))
@@ -158,13 +166,6 @@ def generate_crud(
         / model_plural
         / "routes.py",
         scaffold_root
-        / "routers"
-        / "__init__.py": app_path
-        / "app"
-        / "routers"
-        / model_plural
-        / "__init__.py",
-        scaffold_root
         / "dependencies"
         / "dependence.py": app_path
         / "app"
@@ -192,13 +193,17 @@ def generate_crud(
             raise Exit(1)
 
         dest.parent.mkdir(parents=True, exist_ok=True)
+        init_file = dest.parent / "__init__.py"
+        if not init_file.exists():
+            init_file.touch()
+
         shutil.copy(src, dest)
         inject_variables_in_file(dest, variables)
         print(f"[green]✔ Created {dest.relative_to(app_path)}[/green]")
 
     register_router(app_path, model_name, model_plural)
     register_exception(app_path)
-    if volt_config.features.get("auth"):
+    if volt_config.features.get("auth") != "None":
         register_auth(app_path, model_name, model_plural)
     if volt_config.features.get("database") == DB_MONGO_MODEL:
         register_model_in_init_beanie(app_path, model_name.capitalize())
@@ -255,39 +260,20 @@ def register_auth(app_path: Path, model_name: str, model_plural: str) -> None:
 
 
 def register_exception(app_path: Path) -> None:
-    """Inject exception registration into app/core/exception.py."""
-    exception_path = app_path / "app" / "core" / "exception.py"
-    if not exception_path.exists():
-        exception_path.write_text("")
+    """Inject exception registration into app/core/exceptions.py."""
+    setup_exception_infrastructure(app_path)
 
-    content = exception_path.read_text()
-    content += """
+    not_found_exception = """
 class NotFoundError(Exception):
     def __init__(self, model_name: str):
         self.model_name = model_name
-        super().__init__(f"{model_name} not found")
+        super().__init__(f"{model_name} not found")"""
 
-EXCEPTION_MAP = {
-    NotFoundError: 404,
-}
-    """
-    exception_path.write_text(content)
-
-    main_file = app_path / "app" / "main.py"
-    if not main_file.exists():
-        main_file.write_text("")
-
-    content = main_file.read_text()
-    content += """
-from app.core.exception import EXCEPTION_MAP
-from fastapi import HTTPException
-
-for exc_class, status_code in EXCEPTION_MAP.items():
-    @app.exception_handler(exc_class)
-    async def generic_handler(request, exc, status_code=status_code):
-        return HTTPException(status_code=status_code, detail=str(exc))
-    """
-    main_file.write_text(content)
-    print(
-        f"[green]✔ Registered exception in {exception_path.relative_to(app_path)}[/green]"
+    add_exception_to_map(
+        app_path,
+        exception_class_name="NotFoundError",
+        status_code=404,
+        exception_definition=not_found_exception.strip(),
     )
+
+    print(f"[green]✔ Registered NotFoundError exception[/green]")
