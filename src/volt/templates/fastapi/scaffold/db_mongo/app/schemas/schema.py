@@ -1,10 +1,10 @@
+from beanie import PydanticObjectId
 from typing import Optional
 from pydantic import BaseModel
 
 
 class __MODEL_NAME__Base(BaseModel):
-    name: str
-    description: Optional[str] = None
+    __SCHEMA_BASE_FIELDS__
 
 
 class __MODEL_NAME__Create(__MODEL_NAME__Base):
@@ -12,8 +12,8 @@ class __MODEL_NAME__Create(__MODEL_NAME__Base):
 
 
 class __MODEL_NAME__Update(__MODEL_NAME__Base):
-    name: Optional[str] = None
+    __SCHEMA_UPDATE_FIELDS__
 
 
 class __MODEL_NAME__Read(__MODEL_NAME__Base):
-    id: int
+    id: PydanticObjectId

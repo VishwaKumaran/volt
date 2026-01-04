@@ -1,3 +1,5 @@
+import yaml
+
 FASTAPI_DOCKERFILE = """FROM ghcr.io/astral-sh/uv:python{python_version}-bookworm-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_DOWNLOADS=0
@@ -28,47 +30,42 @@ def generate_docker_compose_string(
 ) -> str:
     from volt.stacks.fastapi.docker_config import DOCKER_CONFIGS
 
-    content = """services:
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-"""
+    services = {
+        "app": {
+            "build": ".",
+            "ports": ["8000:8000"],
+            "env_file": [".env"],
+        }
+    }
 
-    if db_choice not in ["SQLite", "None"]:
-        content += """    depends_on:
-      db:
-        condition: service_healthy
-"""
+    if db_choice not in {"SQLite", "None"}:
+        services["app"]["depends_on"] = {"db": {"condition": "service_healthy"}}
 
-    if db_choice != "SQLite" and db_choice != "None":
-        db_config = DOCKER_CONFIGS.get(db_choice, "").strip()
-        content += f"\n  db:\n{db_config.replace('    ', '    ')}\n"
+    if db_choice not in {"SQLite", "None"}:
+        services["db"] = yaml.safe_load(DOCKER_CONFIGS[db_choice])
+
+        if db_choice == "MongoDB":
+            services["app"].setdefault("environment", {})
+            services["app"]["environment"]["DB_HOST"] = "db"
 
     if redis_enabled:
-        redis_service = """
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-"""
-        content += redis_service
+        services["redis"] = {
+            "image": "redis:latest",
+            "healthcheck": {
+                "test": ["CMD", "redis-cli", "ping"],
+                "interval": "5s",
+                "timeout": "5s",
+                "retries": 5,
+            },
+        }
 
-        # Add to depends_on of app
-        if "depends_on:" not in content:
-            content = content.replace(
-                "    env_file:\n      - .env",
-                "    env_file:\n      - .env\n    depends_on:\n      redis:\n        condition: service_healthy",
-            )
-        else:
-            content = content.replace(
-                "    depends_on:",
-                "    depends_on:\n      redis:\n        condition: service_healthy",
-            )
+        services["app"].setdefault("depends_on", {})
+        services["app"]["depends_on"]["redis"] = {"condition": "service_healthy"}
 
-    return content
+    compose = {"services": services}
+
+    return yaml.safe_dump(
+        compose,
+        sort_keys=False,
+        default_flow_style=False,
+    )
