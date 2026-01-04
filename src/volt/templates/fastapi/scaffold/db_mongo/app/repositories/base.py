@@ -14,10 +14,12 @@ class BaseRepository(Generic[T]):
         skip: int = 0,
         limit: int = 100,
     ) -> Sequence[T]:
-        return await self.model.find().skip(skip).limit(limit)
+        return await self.model.find().skip(skip).limit(limit).to_list()
 
-    async def create(self, obj: T) -> T:
-        return await self.model.insert_one(obj.model_dump())
+    async def create(self, obj: Mapping[str, Any]) -> T:
+        doc = self.model(**obj)
+        await doc.insert()
+        return doc
 
     async def update(self, id: int, obj_in: Mapping[str, Any]) -> T:
         obj = await self.get(id)

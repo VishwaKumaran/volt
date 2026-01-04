@@ -1,3 +1,4 @@
+from beanie import PydanticObjectId
 from typing import Optional
 from pydantic import BaseModel
 
@@ -15,4 +16,4 @@ class __MODEL_NAME__Update(__MODEL_NAME__Base):
 
 
 class __MODEL_NAME__Read(__MODEL_NAME__Base):
-    id: int
+    id: PydanticObjectId
