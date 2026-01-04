@@ -15,7 +15,7 @@ serviceDep = Annotated[__MODEL_NAME__Service, Depends(get___MODEL_NAME_LOWER___s
 router = APIRouter()
 
 
-@router.post("/", response_model=__MODEL_NAME__Read)
+@router.post("", response_model=__MODEL_NAME__Read)
 async def create___MODEL_NAME_LOWER__(
     *, obj_in: __MODEL_NAME__Create, session: sessionDep, service: serviceDep
 ):
@@ -30,7 +30,7 @@ async def read___MODEL_NAME_LOWER__(
     return service.ensure_exists(db_obj)
 
 
-@router.get("/", response_model=List[__MODEL_NAME__Read])
+@router.get("", response_model=List[__MODEL_NAME__Read])
 async def read_multi___MODEL_NAME_PLURAL__(
     *, skip: int = 0, limit: int = 100, session: sessionDep, service: serviceDep
 ):
